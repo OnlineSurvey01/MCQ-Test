@@ -495,16 +495,10 @@ function setRadioAnswer(qid, idx){
 function renderConfidenceCard(qid){
   const cqid = qid + '_conf';
   return `<div class="card" data-qid="${cqid}">
-    <div class="qtext">For each question, you earn a bonus based on how confident you say you are and whether your answer was correct. How confident are you that the answer you just selected is correct?</div>
+    <div class="qtext">How confident are you that the answer you just selected is correct?</div>
     <div class="opts">
       ${CONFIDENCE_LEVELS.map((c,ci)=>`<label><input type="radio" name="${cqid}" value="${ci}" onchange="selectOpt('${cqid}',${ci})"><span>${c.label}</span></label>`).join('')}
     </div>
-    <table class="choicetable" style="margin-top:10px;font-size:12px;">
-      <thead><tr><th>If your confidence was:</th><th>Bonus if you were CORRECT:</th><th>Bonus if you were WRONG:</th></tr></thead>
-      <tbody>
-        ${CONFIDENCE_LEVELS.map(c=>`<tr><td>${c.label}</td><td>Rs. ${c.bonusCorrect.toFixed(2)}</td><td>Rs. ${c.bonusWrong.toFixed(2)}</td></tr>`).join('')}
-      </tbody>
-    </table>
   </div>`;
 }
 
@@ -844,10 +838,17 @@ mainFlowBuilt = true;
 addSection(sidx, `
   <h1 class="sec-title">Section 2 &middot; Stage 1 Ability Assessment</h1>
   <div class="instructions">
-    This section contains 10 multiple-choice questions spanning three areas: Quantitative Reasoning, Data Interpretation and Logical Reasoning, and Verbal Ability. For each question, select the single best answer by choosing any one of the four options A, B, C, or D.
-    <br><b>Payment rule:</b> You earn Rs. 15 for each correct answer. Incorrect answers and skipped questions earn Rs. 0. Since there is no penalty for incorrect answers, you should attempt every question.
-    <br><b>Time allowed: 18 minutes.</b>
-  </div>
+  This section contains 10 multiple-choice questions spanning three areas: Quantitative Reasoning, Data Interpretation and Logical Reasoning, and Verbal Ability. For each question, select the single best answer by choosing any one of the four options A, B, C, or D.
+  <br><b>Payment rule:</b> You earn Rs. 15 for each correct answer. Incorrect answers and skipped questions earn Rs. 0. Since there is no penalty for incorrect answers, you should attempt every question.
+  <br><br>After each question, you will also be asked how confident you are that your answer is correct. For each question, you earn an additional bonus based on your stated confidence and whether your answer was correct, according to the table below:
+  <table class="choicetable" style="margin-top:8px;font-size:12px;">
+    <thead><tr><th>If your confidence was:</th><th>Bonus if you were CORRECT:</th><th>Bonus if you were WRONG:</th></tr></thead>
+    <tbody>
+      ${CONFIDENCE_LEVELS.map(c=>`<tr><td>${c.label}</td><td>Rs. ${c.bonusCorrect.toFixed(2)}</td><td>Rs. ${c.bonusWrong.toFixed(2)}</td></tr>`).join('')}
+    </tbody>
+  </table>
+  <br><b>Time allowed: 20 minutes.</b>
+</div>
   <h2 class="part-title">Part A: Quantitative Reasoning (Questions 1&ndash;4)</h2>
   ${renderMCQBlock(STAGE1_QUESTIONS.slice(0,4), {allowSkip:false, confidence:true})}
   <h2 class="part-title">Part B: Data Interpretation and Logical Reasoning (Questions 5&ndash;7)</h2>
