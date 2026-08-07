@@ -419,6 +419,9 @@ function renderMCQBlock(qArray, opts){
       html += `<div class="skiprow"><label><input type="checkbox" id="skip_${q.id}" onchange="toggleSkip('${q.id}')"> Skip this question</label></div>`;
     }
     html += `</div>`;
+    if(opts.confidence){
+      html += renderConfidenceCard(q.id);
+    }
   });
   return html;
 }
@@ -480,6 +483,39 @@ function setRadioAnswer(qid, idx){
   const radios = card.querySelectorAll('input[type=radio]');
   if(radios[idx]) radios[idx].checked = true;
   selectOpt(qid, idx);
+}
+
+  const CONFIDENCE_LEVELS = [
+  { label: 'Certain (100%)', value: 100, bonusCorrect: 10.00, bonusWrong: 0.00 },
+  { label: 'Fairly confident (75%)', value: 75, bonusCorrect: 9.50, bonusWrong: 4.50 },
+  { label: 'Somewhat confident (50%)', value: 50, bonusCorrect: 7.50, bonusWrong: 7.50 },
+  { label: 'Not confident, mostly guessing (25%)', value: 25, bonusCorrect: 4.50, bonusWrong: 9.50 }
+];
+
+function renderConfidenceCard(qid){
+  const cqid = qid + '_conf';
+  return `<div class="card" data-qid="${cqid}">
+    <div class="qtext">For each question, you earn a bonus based on how confident you say you are and whether your answer was correct. How confident are you that the answer you just selected is correct?</div>
+    <div class="opts">
+      ${CONFIDENCE_LEVELS.map((c,ci)=>`<label><input type="radio" name="${cqid}" value="${ci}" onchange="selectOpt('${cqid}',${ci})"><span>${c.label}</span></label>`).join('')}
+    </div>
+    <table class="choicetable" style="margin-top:10px;font-size:12px;">
+      <thead><tr><th>If your confidence was:</th><th>Bonus if you were CORRECT:</th><th>Bonus if you were WRONG:</th></tr></thead>
+      <tbody>
+        ${CONFIDENCE_LEVELS.map(c=>`<tr><td>${c.label}</td><td>Rs. ${c.bonusCorrect.toFixed(2)}</td><td>Rs. ${c.bonusWrong.toFixed(2)}</td></tr>`).join('')}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+function collectConfidence(qArray){
+  const result = {};
+  qArray.forEach(q=>{
+    const card = document.querySelector(`[data-qid="${q.id}_conf"]`);
+    const ans = card ? card.dataset.answered : undefined;
+    result[q.id] = (ans !== undefined && ans !== '') ? CONFIDENCE_LEVELS[Number(ans)].value : null;
+  });
+  return result;
 }
 
 /* =====================================================================
@@ -813,21 +849,56 @@ addSection(sidx, `
     <br><b>Time allowed: 18 minutes.</b>
   </div>
   <h2 class="part-title">Part A: Quantitative Reasoning (Questions 1&ndash;4)</h2>
-  ${renderMCQBlock(STAGE1_QUESTIONS.slice(0,4), {allowSkip:false})}
+  ${renderMCQBlock(STAGE1_QUESTIONS.slice(0,4), {allowSkip:false, confidence:true})}
   <h2 class="part-title">Part B: Data Interpretation and Logical Reasoning (Questions 5&ndash;7)</h2>
-  ${renderMCQBlock(STAGE1_QUESTIONS.slice(4,7), {allowSkip:false})}
+  ${renderMCQBlock(STAGE1_QUESTIONS.slice(4,7), {allowSkip:false, confidence:true})}
   <h2 class="part-title">Part C: Verbal Analysis (Questions 8&ndash;10)</h2>
-  ${renderMCQBlock(STAGE1_QUESTIONS.slice(7,10), {allowSkip:false})}
+  ${renderMCQBlock(STAGE1_QUESTIONS.slice(7,10), {allowSkip:false, confidence:true})}
   <div class="navrow"><button onclick="finishStage1()">Submit Section 2</button></div>
 `);
 const SEC_STAGE1 = sidx; sidx++;
-function beginStage1(){ startTimer(18*60, null, ()=>{ finishStage1(true); }); }
 window.finishStage1 = function(auto){
   stopTimer();
   const {result} = collectMCQ(STAGE1_QUESTIONS);
-  answers.stage1 = { responses: result, autoSubmitted: !!auto };
+  const confidenceResult = collectConfidence(STAGE1_QUESTIONS);
+  let confidenceBonus = 0;
+  STAGE1_QUESTIONS.forEach(q=>{
+    const r = result[q.id];
+    const confVal = confidenceResult[q.id];
+    if(confVal !== null && r.chosen !== null){
+      const level = CONFIDENCE_LEVELS.find(c=>c.value===confVal);
+      const isCorrect = r.chosen === r.correct;
+      const bonus = isCorrect ? level.bonusCorrect : level.bonusWrong;
+      r.confidence = confVal;
+      r.confidenceBonus = bonus;
+      confidenceBonus += bonus;
+    } else {
+      r.confidence = confVal;
+      r.confidenceBonus = 0;
+    }
+  });
+  answers.stage1 = { responses: result, autoSubmitted: !!auto, confidenceBonusTotal: Math.round(confidenceBonus*100)/100 };
   goTo(SEC_STAGE1+1);
 };
+
+  function computeEarnings(){
+  const FIXED_FEE = 100;
+  let stage1Correct = 0;
+  Object.values(answers.stage1.responses || {}).forEach(r=>{ if(r && r.chosen === r.correct) stage1Correct++; });
+  const stage1Pay = stage1Correct * 15;
+  const stage1ConfidenceBonus = (answers.stage1 && answers.stage1.confidenceBonusTotal) || 0;
+  const round1Correct = (answers.taskC.round1 && answers.taskC.round1.correctCount) || 0;
+  const round1Pay = round1Correct * 5;
+  const total = FIXED_FEE + stage1Pay + stage1ConfidenceBonus + round1Pay;
+  answers.earnings = {
+    fixedFee: FIXED_FEE,
+    stage1: { correctCount: stage1Correct, pay: stage1Pay, confidenceBonus: stage1ConfidenceBonus },
+    taskCRound1: { correctCount: round1Correct, pay: round1Pay },
+    total: total,
+    note: 'Total shown to participant includes only the fixed fee, Stage 1 Ability Assessment (including confidence bonus), and Task C Round 1. Other task/bonus payouts (Task A, Task B, Task C Round 2, Stage 2, confidence-rank bonus, ranking bonus) are determined by the experimenter after the full session.'
+  };
+  return answers.earnings;
+}
 
 // ---------- SECTION 3: DECISION TASKS ----------
 // Task A: Risk Preferences
