@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Study on Decision-Making and Performance Assessment</title>
+<style>
+  :root{
+    --ink:#1c2b2d;
+    --paper:#f7f5ef;
+    --panel:#ffffff;
+    --rule:#d8d3c4;
+    --accent:#2f5233;
+    --accent-soft:#e7ede7;
+    --warn:#8a3324;
+    --mono: "IBM Plex Mono", "Courier New", monospace;
+    --serif: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"Helvetica Neue", Arial, sans-serif;
+    line-height:1.5;
+  }
+  #app{max-width:760px;margin:0 auto;padding:28px 20px 80px;}
+  header.top{
+    display:flex;justify-content:space-between;align-items:baseline;
+    border-bottom:2px solid var(--ink); padding-bottom:10px; margin-bottom:6px;
+  }
+  header.top .brand{font-family:var(--serif); font-size:15px; letter-spacing:.03em;}
+  header.top .clock{font-family:var(--mono); font-size:14px; color:var(--warn); min-width:70px; text-align:right;}
+  .progress-track{height:3px;background:var(--rule);margin-bottom:26px;}
+  .progress-fill{height:3px;background:var(--accent);width:0%;transition:width .3s;}
+  .section{display:none !important;}
+  .section.active{display:block !important;animation:fade .25s ease;}
+  @keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+  h1.sec-title{font-family:var(--serif); font-size:26px; margin:0 0 4px;}
+  h2.part-title{font-family:var(--serif); font-size:19px; margin:26px 0 4px; color:var(--accent);}
+  p.sec-sub{color:#5a5f52; margin:0 0 18px; font-size:14px;}
+  .instructions{
+    background:var(--panel); border:1px solid var(--rule); border-left:4px solid var(--accent);
+    padding:14px 16px; font-size:14.5px; margin-bottom:22px; border-radius:2px;
+  }
+  .instructions.warn{border-left-color:var(--warn);}
+  .card{
+    background:var(--panel); border:1px solid var(--rule); border-radius:3px;
+    padding:16px 18px; margin-bottom:16px;
+  }
+  .qtext{font-size:15px; margin-bottom:10px;}
+  .qnum{font-family:var(--mono); color:var(--accent); font-weight:600; margin-right:6px;}
+  .opts label{
+    display:block; padding:8px 10px; margin:4px 0; border:1px solid var(--rule);
+    border-radius:2px; cursor:pointer; font-size:14.5px; transition:background .15s,border-color .15s;
+  }
+  .opts label:hover{background:var(--accent-soft);}
+  .opts input[type=radio]:checked + span, .opts input[type=checkbox]:checked + span{font-weight:600;}
+  .opts label.checked{background:var(--accent-soft); border-color:var(--accent);}
+  .opts input{margin-right:8px;}
+  .skiprow{margin-top:6px; font-size:13px; color:#666;}
+  input[type=text], input[type=number], input[type=email], textarea{
+    width:100%; padding:8px 10px; border:1px solid var(--rule); border-radius:2px;
+    font-size:14.5px; font-family:inherit; background:#fff;
+  }
+  textarea{resize:vertical;min-height:70px;}
+  table.datatable{border-collapse:collapse; margin:10px 0; font-size:13.5px;}
+  table.datatable th, table.datatable td{border:1px solid var(--rule); padding:5px 10px; text-align:center;}
+  table.datatable th{background:var(--accent-soft);}
+  .likert-row{display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-top:1px solid var(--rule); font-size:13.5px; gap:10px;}
+  .likert-row:first-of-type{border-top:none;}
+  .likert-scale{display:flex; gap:8px;}
+  .likert-scale label{display:flex; flex-direction:column; align-items:center; font-size:11px; cursor:pointer;}
+  .likert-scale input{margin-bottom:3px;}
+  .scale5{display:flex; justify-content:space-between; max-width:420px; margin:10px auto;}
+  .scale5 .pt{display:flex; flex-direction:column; align-items:center; font-size:11px; cursor:pointer; gap:4px; text-align:center; width:80px;}
+  .navrow{display:flex; justify-content:flex-end; gap:10px; margin-top:24px;}
+  button{
+    font-family:inherit; font-size:14.5px; padding:10px 22px; border-radius:2px; cursor:pointer;
+    border:1px solid var(--accent); background:var(--accent); color:#fff;
+  }
+  button.secondary{background:#fff; color:var(--accent);}
+  button:disabled{opacity:.45; cursor:not-allowed;}
+  .flag{color:var(--warn); font-size:13px; margin-top:8px;}
+  .rowline{display:flex; gap:10px; align-items:center; margin:6px 0; font-size:14px;}
+  .rowline label{min-width:200px;}
+  .footnote{font-size:12px;color:#777;margin-top:6px;}
+  .tab-overlay{
+    position:fixed; inset:0; background:rgba(28,43,45,.94); z-index:9999;
+    display:none; align-items:center; justify-content:center; padding:20px;
+  }
+  .tab-overlay .box{
+    background:#fff; border-radius:4px; padding:32px 28px; max-width:440px; text-align:center;
+    border-top:5px solid var(--warn);
+  }
+  .tab-overlay h2{margin:0 0 12px; font-family:var(--serif); font-size:22px; color:var(--warn);}
+  .tab-overlay p{font-size:14.5px; margin:0 0 18px; color:var(--ink); line-height:1.5;}
+  table.choicetable{border-collapse:collapse; width:100%; margin:10px 0 6px; font-size:14px; background:var(--panel);}
+  table.choicetable th, table.choicetable td{border:1px solid var(--rule); padding:6px 8px; vertical-align:middle;}
+  table.choicetable th{background:var(--accent-soft); font-weight:600; text-align:left;}
+  table.choicetable td.rownum{text-align:center; font-family:var(--mono); color:var(--accent); font-weight:600; width:56px;}
+  table.choicetable td.opts{padding:4px; text-align:center; width:110px;}
+  table.choicetable .opts label{display:block; margin:0; padding:8px 6px; text-align:center;}
+  table.choicetable .opts label span{margin-left:4px;}
+  table.choicetable tr:nth-child(even) td{background:#fbfaf6;}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="top">
+    <div class="brand">Study on Decision-Making and Performance Assessment</div>
+    <div class="clock" id="clockDisplay"></div>
+  </header>
+  <div class="progress-track"><div class="progress-fill" id="progFill"></div></div>
+  <div id="sections"></div>
+</div>
+<div class="tab-overlay" id="tabWarningOverlay">
+  <div class="box">
+    <h2>Tab Switch Detected</h2>
+    <p>Leaving this tab or window during the survey is not permitted. If you switch away again, your survey will be automatically closed and your responses submitted as-is.</p>
+    <button onclick="dismissTabWarning()">I understand &mdash; Continue</button>
+  </div>
+</div>
+<div class="tab-overlay" id="tabLockOverlay">
+  <div class="box">
+    <h2>Survey Closed</h2>
+    <p>Your survey has been closed because you switched tabs or windows after being warned. Please notify the study administrator.</p>
+  </div>
+</div>
+<div class="tab-overlay" id="emailBlockedOverlay">
+  <div class="box">
+    <h2>Survey Not Available</h2>
+    <p>This email address was used in a previous attempt that was closed for switching tabs. You cannot retake the survey with this email on this browser. Please contact the study administrator if you believe this is an error.</p>
+  </div>
+</div>
+<div class="tab-overlay" id="resumeOverlay">
+  <div class="box">
+    <h2>Resume Your Survey?</h2>
+    <p>We found saved progress for this email from an earlier session on this browser. Click below to resume where you left off.</p>
+    <div style="display:flex;gap:10px;justify-content:center;">
+      <button onclick="resumeSavedProgress()">Resume where I left off</button>
+    </div>
+  </div>
+</div>
+<div class="tab-overlay" id="alreadyCompletedOverlay">
+  <div class="box">
+    <h2>Survey Already Completed</h2>
+    <p>Our records show this email has already completed the survey on this browser. Each participant may only complete the study once. Please contact the study administrator if you believe this is an error.</p>
+  </div>
+</div>
+<div class="tab-overlay" id="screenshotWarningOverlay">
+  <div class="box">
+    <h2>Screenshot Attempt Detected</h2>
+    <p>Taking a screenshot of this survey is not permitted. This attempt has been logged. If you attempt this again, your survey will be automatically closed and your responses submitted as-is.</p>
+    <button onclick="dismissScreenshotWarning()">I understand &mdash; Continue</button>
+  </div>
+</div>
+<div class="tab-overlay" id="screenshotLockOverlay">
+  <div class="box">
+    <h2>Survey Closed</h2>
+    <p>Your survey has been closed because you attempted to take a screenshot after being warned. Please notify the study administrator.</p>
+  </div>
+</div>
+<div class="tab-overlay" id="resumeLimitOverlay">
+  <div class="box">
+    <h2>Survey Closed</h2>
+    <p>This survey can only be resumed once. It has already been resumed from an earlier interrupted session with this email, so it cannot be continued again. Please contact the study administrator if you believe this is an error.</p>
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   STATE + RANDOMIZATION
+===================================================================== */
+const R = {
+  pid: 'P' + Math.floor(Math.random()*900000+100000),
+  condition: [1,2][Math.floor(Math.random()*2)],
+  startedAt: new Date().toISOString()
+};
+const answers = { meta: R, participant:{name:null,email:null}, demographics:{}, background:{},
+                   stage1:{}, taskA:{}, taskB:{}, taskC:{}, comprehensionCheck:{},
+                   stage2:{}, confidence:{}, postSurvey:{}, resumeCount: 0 };
+
+/* =====================================================================
+   TAB-SWITCH GUARD
+   Warns on the first attempt to leave the tab/window; closes the survey
+   (locks the UI and stops the timer) on any subsequent attempt.
+===================================================================== */
+let tabSwitchCount = 0;
+let surveyLocked = false;
+answers.tabSwitchEvents = [];
+answers.terminatedDueToTabSwitch = false;
+
+let lastAwayEventAt = 0;
+function handleTabHidden(){
+  if(surveyLocked) return;
+  const now = Date.now();
+  // A real tab switch fires both 'visibilitychange' and window 'blur' at
+  // once; debounce so that single action isn't counted as two violations.
+  if(now - lastAwayEventAt < 500) return;
+  lastAwayEventAt = now;
+  tabSwitchCount++;
+  answers.tabSwitchEvents.push({ count: tabSwitchCount, at: new Date().toISOString() });
+  if(tabSwitchCount === 1){
+    document.getElementById('tabWarningOverlay').style.display = 'flex';
+  } else {
+    lockSurveyForTabSwitch();
+  }
+}
+document.addEventListener('visibilitychange', function(){
+  if(document.hidden) handleTabHidden();
+});
+// visibilitychange alone misses the case where the participant switches to
+// another application (e.g. opening a file, alt-tabbing) while the browser
+// window stays open in the background rather than being minimized/covered
+// as a backgrounded tab. window 'blur' fires whenever OS focus leaves this
+// window entirely, so it catches that gap.
+window.addEventListener('blur', function(){
+  handleTabHidden();
+});
+window.dismissTabWarning = function(){
+  document.getElementById('tabWarningOverlay').style.display = 'none';
+};
+
+/* =====================================================================
+   SCREENSHOT (PRINT SCREEN) DETECTION
+   Best-effort only: catches the Print Screen key on Windows. Cannot
+   detect Snipping Tool / Win+Shift+S, Mac screenshot shortcuts, phone
+   screenshots, or a second device photographing the screen. Mirrors the
+   tab-switch guard: warns on the first attempt, closes the survey on
+   any subsequent attempt.
+===================================================================== */
+answers.screenshotAttempts = [];
+answers.terminatedDueToScreenshot = false;
+let screenshotAttemptCount = 0;
+function handlePrintScreenAttempt(){
+  if(surveyLocked) return;
+  screenshotAttemptCount++;
+  answers.screenshotAttempts.push({ count: screenshotAttemptCount, at: new Date().toISOString() });
+  if(screenshotAttemptCount === 1){
+    document.getElementById('screenshotWarningOverlay').style.display = 'flex';
+    syncToGoogleSheet();
+  } else {
+    lockSurveyForScreenshot();
+  }
+}
+document.addEventListener('keyup', function(e){
+  if(e.key === 'PrintScreen' || e.keyCode === 44){ handlePrintScreenAttempt(); }
+});
+document.addEventListener('keydown', function(e){
+  if(e.key === 'PrintScreen' || e.keyCode === 44){ handlePrintScreenAttempt(); }
+});
+window.dismissScreenshotWarning = function(){
+  document.getElementById('screenshotWarningOverlay').style.display = 'none';
+};
+function lockSurveyForScreenshot(){
+  surveyLocked = true;
+  stopTimer();
+  document.getElementById('screenshotWarningOverlay').style.display = 'none';
+  document.getElementById('screenshotLockOverlay').style.display = 'flex';
+  answers.terminatedDueToScreenshot = true;
+  answers.terminatedAt = new Date().toISOString();
+  if(currentParticipantEmail){ addEmailToBlocklist(currentParticipantEmail); }
+  syncToGoogleSheet();
+}
+function lockSurveyForTabSwitch(){
+  surveyLocked = true;
+  stopTimer();
+  document.getElementById('tabWarningOverlay').style.display = 'none';
+  document.getElementById('tabLockOverlay').style.display = 'flex';
+  answers.terminatedDueToTabSwitch = true;
+  answers.terminatedAt = new Date().toISOString();
+  if(currentParticipantEmail){ addEmailToBlocklist(currentParticipantEmail); }
+  syncToGoogleSheet();
+}
+
+/* =====================================================================
+   GOOGLE SHEET SYNC (optional)
+   Paste the Web App URL from your Apps Script deployment into
+   GOOGLE_SHEET_WEBAPP_URL below and every checkpoint (plus the final
+   submission and any tab-switch termination) will also be sent to a
+   Google Sheet, in addition to the local autosave. Leave it blank
+   ('') to disable this and rely on local storage only.
+===================================================================== */
+const GOOGLE_SHEET_WEBAPP_URL = ''; // <-- paste your deployed Web App URL here
+
+function syncToGoogleSheet(){
+  if(!GOOGLE_SHEET_WEBAPP_URL || !currentParticipantEmail) return;
+  try{
+    const payload = Object.assign({}, answers, {
+      _flowIndex: (typeof flowIndex !== 'undefined') ? flowIndex : null,
+      _syncedAt: new Date().toISOString()
+    });
+    fetch(GOOGLE_SHEET_WEBAPP_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    }).catch(function(){ /* silent - network issues shouldn't block the survey */ });
+  }catch(e){ /* ignore */ }
+}
+
+/* =====================================================================
+   EMAIL BLOCKLIST (browser-local)
+   Tracks the email entered in Participant Details. If the survey is
+   closed due to tab-switching, that email is stored in this browser's
+   localStorage. This only blocks retries from the SAME browser/device,
+   since this page has no backend/server to check against.
+===================================================================== */
+const TAB_BLOCK_STORAGE_KEY = 'surveyTabSwitchBlocklist_v1';
+let currentParticipantEmail = null;
+
+function getBlocklist(){
+  try {
+    const raw = localStorage.getItem(TAB_BLOCK_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch(e){ return []; }
+}
+function isEmailBlocked(email){
+  return getBlocklist().indexOf(email) !== -1;
+}
+function addEmailToBlocklist(email){
+  if(!email) return;
+  try {
+    const list = getBlocklist();
+    if(list.indexOf(email) === -1){
+      list.push(email);
+      localStorage.setItem(TAB_BLOCK_STORAGE_KEY, JSON.stringify(list));
+    }
+  } catch(e){ /* localStorage unavailable */ }
+}
+document.addEventListener('input', function(e){
+  if(e.target && e.target.id === 'pEmail'){
+    const v = e.target.value.trim().toLowerCase();
+    currentParticipantEmail = v || null;
+  }
+});
+
+/* =====================================================================
+   PROGRESS AUTOSAVE (browser-local)
+   Every time the participant moves to a new section, a full snapshot
+   (randomisation, all answers so far, and the current section index)
+   is saved to this browser's localStorage under their email. If they
+   refresh the page or reopen it and re-enter the same email, they are
+   offered the chance to resume from that snapshot instead of starting
+   over.
+===================================================================== */
+const PROGRESS_STORAGE_KEY = 'surveyProgress_v1';
+let pendingResume = null;
+
+function getAllProgress(){
+  try {
+    const raw = localStorage.getItem(PROGRESS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch(e){ return {}; }
+}
+function getProgressFor(email){
+  const all = getAllProgress();
+  return all[email] || null;
+}
+function saveProgressSnapshot(){
+  if(!currentParticipantEmail) return;
+  try{
+    const all = getAllProgress();
+    all[currentParticipantEmail] = {
+      R: { pid: R.pid, condition: R.condition, startedAt: R.startedAt },
+      answers: answers,
+      flowIndex: flowIndex,
+      savedAt: new Date().toISOString(),
+      completed: !!answers.completedAt
+    };
+    localStorage.setItem(PROGRESS_STORAGE_KEY, JSON.stringify(all));
+  }catch(e){ /* storage unavailable or full - progress just won't persist */ }
+}
+function clearProgressFor(email){
+  try{
+    const all = getAllProgress();
+    delete all[email];
+    localStorage.setItem(PROGRESS_STORAGE_KEY, JSON.stringify(all));
+  }catch(e){}
+}
+
+/* =====================================================================
+   TIMER UTILITY
+===================================================================== */
+let timerInterval = null;
+function startTimer(seconds, onTick, onExpire){
+  clearInterval(timerInterval);
+  let remaining = seconds;
+  document.getElementById('clockDisplay').textContent = fmtTime(remaining);
+  timerInterval = setInterval(()=>{
+    remaining--;
+    document.getElementById('clockDisplay').textContent = fmtTime(remaining);
+    if(onTick) onTick(remaining);
+    if(remaining<=0){ clearInterval(timerInterval); if(onExpire) onExpire(); }
+  },1000);
+}
+function stopTimer(){ clearInterval(timerInterval); document.getElementById('clockDisplay').textContent=''; }
+function fmtTime(s){ if(s<0) s=0; const m=Math.floor(s/60), sec=s%60; return m+':'+String(sec).padStart(2,'0'); }
+
+/* =====================================================================
+   RENDER ENGINE
+===================================================================== */
+const flow = [];
+let flowIndex = 0;
+const root = document.getElementById('sections');
+
+function renderMCQBlock(qArray, opts){
+  opts = opts || {};
+  let html = '';
+  qArray.forEach((q,i)=>{
+    html += `<div class="card" data-qid="${q.id}">
+      <div class="qtext"><span class="qnum">Q${q.num}</span>${q.html?q.html:q.text}</div>
+      <div class="opts">`;
+    const letters=['A','B','C','D'];
+    q.opts.forEach((o,oi)=>{
+      html += `<label><input type="radio" name="${q.id}" value="${oi}" onchange="selectOpt('${q.id}',${oi})"><span>${letters[oi]}. ${o}</span></label>`;
+    });
+    html += `</div>`;
+    if(opts.allowSkip){
+      html += `<div class="skiprow"><label><input type="checkbox" id="skip_${q.id}" onchange="toggleSkip('${q.id}')"> Skip this question</label></div>`;
+    }
+    html += `</div>`;
+  });
+  return html;
+}
+window.selectOpt = function(qid, idx){
+  const card = document.querySelector(`[data-qid="${qid}"]`);
+  card.querySelectorAll('.opts label').forEach(l=>l.classList.remove('checked'));
+  card.querySelectorAll('.opts label')[idx].classList.add('checked');
+  const skipBox = document.getElementById('skip_'+qid);
+  if(skipBox){ skipBox.checked=false; }
+  card.dataset.answered = idx;
+  card.dataset.skipped = '';
+};
+window.toggleSkip = function(qid){
+  const card = document.querySelector(`[data-qid="${qid}"]`);
+  const skipBox = document.getElementById('skip_'+qid);
+  if(skipBox.checked){
+    card.querySelectorAll('input[type=radio]').forEach(r=>r.checked=false);
+    card.querySelectorAll('.opts label').forEach(l=>l.classList.remove('checked'));
+    card.dataset.answered = '';
+    card.dataset.skipped = '1';
+  } else {
+    card.dataset.skipped = '';
+  }
+};
+function collectMCQ(qArray){
+  const result = {}; let allDone = true;
+  qArray.forEach(q=>{
+    const card = document.querySelector(`[data-qid="${q.id}"]`);
+    const ans = card.dataset.answered;
+    const skipped = card.dataset.skipped === '1';
+    if(ans === undefined || ans === '' ) { if(!skipped) allDone=false; }
+    result[q.id] = { chosen: (ans!=='' && ans!==undefined)? Number(ans): null, skipped: skipped, correct: q.ans };
+  });
+  return { result, allDone };
+}
+function setProgress(pct){ document.getElementById('progFill').style.width = pct+'%'; }
+function goTo(idx){
+  flowIndex = idx;
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  const el = document.getElementById('sec_'+idx);
+  el.classList.add('active');
+  window.scrollTo(0,0);
+  setProgress(Math.round((idx/(flow.length-1))*100));
+  saveProgressSnapshot();
+  syncToGoogleSheet();
+}
+function addSection(id, html){
+  const existing = document.getElementById('sec_'+id);
+  if(existing){ existing.remove(); }
+  const div = document.createElement('div');
+  div.className='section';
+  div.id='sec_'+id;
+  div.innerHTML = html;
+  root.appendChild(div);
+}
+function setRadioAnswer(qid, idx){
+  const card = document.querySelector(`[data-qid="${qid}"]`);
+  if(!card) return;
+  const radios = card.querySelectorAll('input[type=radio]');
+  if(radios[idx]) radios[idx].checked = true;
+  selectOpt(qid, idx);
+}
+
+/* =====================================================================
+   QUESTION BANKS
+   Stage 1 = subset of Set A (10 items). Stage 2 = subset of Set B (10 items).
+   Drawn from the study's original item pool per the Sample Questionnaire.
+===================================================================== */
+const STAGE1_QUESTIONS = [
+ {id:'S1Q1', num:1, part:'Part A: Quantitative Reasoning', text:'Let n and m be two positive integers such that there are exactly 41 integers greater than 8<sup>m</sup> and less than 8<sup>n</sup>, which can be expressed as powers of 2. Then, the smallest possible value of n + m is:', opts:['14','42','16','44'], ans:2},
+ {id:'S1Q2', num:2, part:'Part A: Quantitative Reasoning', text:'A club has 256 members of whom 144 can play football, 123 can play tennis, and 132 can play cricket. Moreover, 58 members can play both football and tennis, 25 can play both cricket and tennis, while 63 can play both football and cricket. If every member can play at least one game, then the number of members who can play only tennis is:', opts:['32','43','38','45'], ans:1},
+ {id:'S1Q3', num:3, part:'Part A: Quantitative Reasoning', text:'Five students, including Amit, appear for an examination in which possible marks are integers between 0 and 50, both inclusive. The average marks for all the students is 38 and exactly three students got more than 32. If no two students got the same marks and Amit got the least marks among the five students, then the difference between the highest and lowest possible marks of Amit is:', opts:['21','24','20','22'], ans:2},
+ {id:'S1Q4', num:4, part:'Part A: Quantitative Reasoning', text:'If f(5 + x) = f(5 \u2212 x) for every real x and f(x) = 0 has four distinct real roots, then the sum of the roots is:', opts:['0','40','10','20'], ans:3},
+ {id:'S1Q5', num:5, part:'Part B: Data Interpretation and Logical Reasoning', text:'Y is in the east of X, which is in the north of Z. If P is in the south of Z, then in which direction of Y, is P?', opts:['North','South','South-West','None'], ans:2},
+ {id:'S1Q6', num:6, part:'Part B: Data Interpretation and Logical Reasoning', html:`<div style="text-align:center;font-weight:600;font-size:13px;margin-bottom:6px;">M/s Mega Corp Limited: Number of Workers Employed and Units Shipped</div>
+   <div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin:6px 0 10px;">
+   <svg width="300" height="270" viewBox="0 0 340 300" style="background:#fff;border:1px solid var(--rule);">
+     <text x="170" y="14" text-anchor="middle" font-size="12" font-weight="600" fill="#1c2b2d">Number of Workers Employed</text>
+     <rect x="60" y="22" width="11" height="11" fill="#333"/><text x="75" y="31" font-size="10" fill="#1c2b2d">Temporary</text>
+     <rect x="160" y="22" width="11" height="11" fill="#fff" stroke="#333"/><text x="175" y="31" font-size="10" fill="#1c2b2d">Permanent</text>
+     <line x1="50" y1="250" x2="310" y2="250" stroke="#999"/>
+     <line x1="50" y1="228" x2="310" y2="228" stroke="#e5e2d8"/><text x="45" y="231" font-size="9" text-anchor="end" fill="#666">100</text>
+     <line x1="50" y1="206" x2="310" y2="206" stroke="#e5e2d8"/><text x="45" y="209" font-size="9" text-anchor="end" fill="#666">200</text>
+     <line x1="50" y1="184" x2="310" y2="184" stroke="#e5e2d8"/><text x="45" y="187" font-size="9" text-anchor="end" fill="#666">300</text>
+     <line x1="50" y1="162" x2="310" y2="162" stroke="#e5e2d8"/><text x="45" y="165" font-size="9" text-anchor="end" fill="#666">400</text>
+     <line x1="50" y1="140" x2="310" y2="140" stroke="#e5e2d8"/><text x="45" y="143" font-size="9" text-anchor="end" fill="#666">500</text>
+     <line x1="50" y1="118" x2="310" y2="118" stroke="#e5e2d8"/><text x="45" y="121" font-size="9" text-anchor="end" fill="#666">600</text>
+     <line x1="50" y1="96" x2="310" y2="96" stroke="#e5e2d8"/><text x="45" y="99" font-size="9" text-anchor="end" fill="#666">700</text>
+     <line x1="50" y1="74" x2="310" y2="74" stroke="#e5e2d8"/><text x="45" y="77" font-size="9" text-anchor="end" fill="#666">800</text>
+     <line x1="50" y1="52" x2="310" y2="52" stroke="#e5e2d8"/><text x="45" y="55" font-size="9" text-anchor="end" fill="#666">900</text>
+     <line x1="50" y1="30" x2="310" y2="30" stroke="#e5e2d8"/><text x="45" y="33" font-size="9" text-anchor="end" fill="#666">1000</text>
+     <text x="45" y="253" font-size="9" text-anchor="end" fill="#666">0</text>
+     <rect x="55" y="206" width="32" height="44" fill="#333"/><rect x="55" y="140" width="32" height="66" fill="#fff" stroke="#333"/>
+     <rect x="109" y="197.2" width="32" height="52.8" fill="#333"/><rect x="109" y="126.8" width="32" height="70.4" fill="#fff" stroke="#333"/>
+     <rect x="163" y="184" width="32" height="66" fill="#333"/><rect x="163" y="107" width="32" height="77" fill="#fff" stroke="#333"/>
+     <rect x="217" y="192.8" width="32" height="57.2" fill="#333"/><rect x="217" y="107" width="32" height="85.8" fill="#fff" stroke="#333"/>
+     <rect x="271" y="173" width="32" height="77" fill="#333"/><rect x="271" y="74" width="32" height="99" fill="#fff" stroke="#333"/>
+     <text x="71" y="264" font-size="9.5" text-anchor="middle" fill="#1c2b2d">Jan1</text>
+     <text x="125" y="264" font-size="9.5" text-anchor="middle" fill="#1c2b2d">Feb1</text>
+     <text x="179" y="264" font-size="9.5" text-anchor="middle" fill="#1c2b2d">March1</text>
+     <text x="233" y="264" font-size="9.5" text-anchor="middle" fill="#1c2b2d">April1</text>
+     <text x="287" y="264" font-size="9.5" text-anchor="middle" fill="#1c2b2d">May1</text>
+   </svg>
+   <svg width="300" height="270" viewBox="0 0 340 300" style="background:#fff;border:1px solid var(--rule);">
+     <text x="170" y="14" text-anchor="middle" font-size="12" font-weight="600" fill="#1c2b2d">Number of Units Shipped</text>
+     <text x="170" y="26" text-anchor="middle" font-size="10" fill="#555">(Monthly Totals)</text>
+     <line x1="50" y1="250" x2="310" y2="250" stroke="#999"/>
+     <line x1="50" y1="228" x2="310" y2="228" stroke="#e5e2d8"/>
+     <line x1="50" y1="206" x2="310" y2="206" stroke="#e5e2d8"/><text x="45" y="209" font-size="9" text-anchor="end" fill="#666">10000</text>
+     <line x1="50" y1="184" x2="310" y2="184" stroke="#e5e2d8"/>
+     <line x1="50" y1="162" x2="310" y2="162" stroke="#e5e2d8"/><text x="45" y="165" font-size="9" text-anchor="end" fill="#666">20000</text>
+     <line x1="50" y1="140" x2="310" y2="140" stroke="#e5e2d8"/>
+     <line x1="50" y1="118" x2="310" y2="118" stroke="#e5e2d8"/><text x="45" y="121" font-size="9" text-anchor="end" fill="#666">30000</text>
+     <line x1="50" y1="96" x2="310" y2="96" stroke="#e5e2d8"/>
+     <line x1="50" y1="74" x2="310" y2="74" stroke="#e5e2d8"/><text x="45" y="77" font-size="9" text-anchor="end" fill="#666">40000</text>
+     <line x1="50" y1="52" x2="310" y2="52" stroke="#e5e2d8"/>
+     <line x1="50" y1="30" x2="310" y2="30" stroke="#e5e2d8"/><text x="45" y="33" font-size="9" text-anchor="end" fill="#666">50000</text>
+     <text x="45" y="253" font-size="9" text-anchor="end" fill="#666">0</text>
+     <polyline points="60,206 120,140 180,162 240,118 300,74" fill="none" stroke="#333" stroke-width="2"/>
+     <circle cx="60" cy="206" r="3.5" fill="#333"/><circle cx="120" cy="140" r="3.5" fill="#333"/><circle cx="180" cy="162" r="3.5" fill="#333"/><circle cx="240" cy="118" r="3.5" fill="#333"/><circle cx="300" cy="74" r="3.5" fill="#333"/>
+     <text x="60" y="264" font-size="9.5" text-anchor="middle" fill="#1c2b2d">Jan</text>
+     <text x="120" y="264" font-size="9.5" text-anchor="middle" fill="#1c2b2d">Feb</text>
+     <text x="180" y="264" font-size="9.5" text-anchor="middle" fill="#1c2b2d">March</text>
+     <text x="240" y="264" font-size="9.5" text-anchor="middle" fill="#1c2b2d">April</text>
+     <text x="300" y="264" font-size="9.5" text-anchor="middle" fill="#1c2b2d">May</text>
+   </svg>
+   </div>
+   By what per cent did the number of temporary workers employed by M/s Mega Corp Limited increase from April 1 to May 1?`, opts:['40%','25%','20%','12%'], ans:0},
+ {id:'S1Q7', num:7, part:'Part B: Data Interpretation and Logical Reasoning', html:`The table below presents the revenue (in million rupees) of four firms in three states. These firms, Honest Ltd., Aggressive Ltd., Truthful Ltd. and Profitable Ltd. are disguised in the table as A, B, C and D, in no particular order.
+   <table class="datatable"><tr><th>States</th><th>Firm A</th><th>Firm B</th><th>Firm C</th><th>Firm D</th></tr>
+   <tr><td>UP</td><td>49</td><td>82</td><td>80</td><td>55</td></tr>
+   <tr><td>Bihar</td><td>69</td><td>72</td><td>70</td><td>65</td></tr>
+   <tr><td>MP</td><td>72</td><td>63</td><td>72</td><td>65</td></tr></table>
+   Further, it is known that: in the state of MP, Truthful Ltd. has the highest market share; and Aggressive Ltd.\u2019s aggregate revenue differs from Honest Ltd.\u2019s by Rs. 5 million.<br><br>
+   Statement 1: Profitable Ltd. has the lowest share in MP market.<br>Statement 2: Honest Ltd.\u2019s total revenue is more than Profitable Ltd.<br>What can be said regarding the two statements?`, opts:['If Statement 1 is true then Statement 2 is necessarily true.','If Statement 1 is true then Statement 2 is necessarily false.','Both Statement 1 and Statement 2 are true.','Neither Statement 1 nor Statement 2 is true.'], ans:1},
+ {id:'S1Q8', num:8, part:'Part C: Verbal Analysis', html:`In the following question, there are five sentences or parts of sentences that form a paragraph. Identify the sentence(s) or part(s) of sentence(s) that is/are correct in terms of grammar and usage. Then, choose the most appropriate option.<br>
+   A. So once an economy is actually in a recession,<br>
+   B. the authorities can, in principle, move the economy<br>
+   C. out of slump \u2013 assuming hypothetically<br>
+   D. that they know how to \u2013 by a temporary stimuli.<br>
+   E. In the longer term, however, such polices have no affect on the overall behaviour of the economy.`, opts:['A, B & E','B, C & E','C & D','B only'], ans:2},
+ {id:'S1Q9', num:9, part:'Part C: Verbal Analysis', html:`Choose the correct word for each pair:<br>
+   1. The further/farther he pushed himself, the more disillusioned he grew.<br>
+   2. For the crowds it was more of a historical/historic event; for their leader, it was just another day.<br>
+   3. The old man has a healthy distrust/mistrust for all new technology.<br>
+   4. This film is based on a real/true story.<br>
+   5. One suspects that the compliment/complement was backhanded.`, opts:['B A B A B','A B B B A','B A A B A','A B A B A'], ans:3},
+ {id:'S1Q10', num:10, part:'Part C: Verbal Analysis', html:`Five sentences related to a topic are given below. Four of them can be put together to form a meaningful and coherent short paragraph. Identify and choose the odd one out.<br>
+   1. People who study children\u2019s language spend a lot of time watching how babies react to the speech they hear around them.<br>
+   2. They make films of adults and babies interacting, and examine them very carefully to see whether the babies show any signs of understanding what the adults say.<br>
+   3. They believe that babies begin to react to language from the very moment they are born.<br>
+   4. Sometimes the signs are very subtle \u2013 slight movements of the baby\u2019s eyes or the head or the hands.<br>
+   5. You\u2019d never notice them if you were just sitting with the child, but by watching a recording over and over, you can spot them.`, opts:['Sentence 1','Sentence 3','Sentence 4','Sentence 5'], ans:1}
+];
+
+const STAGE2_QUESTIONS = [
+ {id:'S2Q1', num:1, part:'Part A: Quantitative Reasoning', text:'If a/b = 1/3, b/c = 2, c/d = 1/2, d/e = 3 and e/f = 1/4, then what is the value of abc/def?', opts:['1/4','3/4','3/8','27/4'], ans:2},
+ {id:'S2Q2', num:2, part:'Part A: Quantitative Reasoning', html:'What are the values of x and y that satisfy the equation: 2<sup>0.7x</sup>\u00b73<sup>\u22121.25y</sup> = 8\u221a6 / 27, and 4<sup>0.3x</sup>\u00b79<sup>0.2y</sup> = 8\u00b7(81)<sup>1/5</sup> ?', opts:['x = 2.5, y = 6','x = 3, y = 5','x = 3, y = 4','x = 5, y = 2'], ans:3},
+ {id:'S2Q3', num:3, part:'Part A: Quantitative Reasoning', text:'The area of a rectangle and the square of its perimeter are in the ratio 1:25. Then the lengths of the shorter and longer sides of the rectangle are in the ratio:', opts:['3:8','2:9','1:4','1:3'], ans:2},
+ {id:'S2Q4', num:4, part:'Part A: Quantitative Reasoning', text:'The female to male ratio for Cycling athletes from Russia and USA was 1:19 and 4:1 respectively. If the number of female Cycling athletes was equal to the number of male Cycling athletes for the three countries put together, then what was the number of female Cycling athletes from China?', opts:['4','96','66','None of these'], ans:2},
+ {id:'S2Q5', num:5, part:'Part B: Data Interpretation and Logical Reasoning', html:`According to a coding scheme the sentence <b>Peacock is designated as the national bird of India</b> is coded as:<br>
+   <code>5688999 35 1135556678 56 458 13666689 1334 79 13366</code><br>
+   This coding scheme has the following rules: it is case-insensitive; each letter has a unique code which is a single digit from 1\u20139; the digit 9 codes two letters, and every other digit codes three letters; the code for a word is constructed by arranging the digits corresponding to its letters in a non-decreasing sequence.<br>
+   What best can be concluded about the code for the letter L?`, opts:['6','8','1 or 8','1'], ans:2},
+ {id:'S2Q6', num:6, part:'Part B: Data Interpretation and Logical Reasoning', html:`A health-drink company\u2019s R&amp;D department is trying to make various diet formulations from 5 alternative ingredients (O, P, Q, R, S). The table below gives the composition of these ingredients. The cost per unit of each is O: 150, P: 50, Q: 200, R: 500, S: 100.
+   <table class="datatable"><tr><th>Ingredient</th><th>Carbohydrate%</th><th>Protein%</th><th>Fat%</th><th>Minerals%</th></tr>
+   <tr><td>O</td><td>50</td><td>30</td><td>10</td><td>10</td></tr>
+   <tr><td>P</td><td>80</td><td>20</td><td>0</td><td>0</td></tr>
+   <tr><td>Q</td><td>10</td><td>30</td><td>50</td><td>10</td></tr>
+   <tr><td>R</td><td>5</td><td>50</td><td>40</td><td>5</td></tr>
+   <tr><td>S</td><td>45</td><td>50</td><td>0</td><td>5</td></tr></table>
+   In what proportion should P, Q and S be mixed to make a diet having at least 60% carbohydrate at the lowest cost per unit?`, opts:['2:1:3','4:1:2','2:1:4','4:1:1'], ans:3},
+ {id:'S2Q7', num:7, part:'Part B: Data Interpretation and Logical Reasoning', html:`In a hockey match, the Indian team was behind by 2 goals with 5 min remaining. Did they win the match?<br>
+   i. Deepak Thakur, the Indian striker, scored 3 goals in the last 5 min of the match.<br>
+   ii. Korea scored a total of 3 goals in the match.`, opts:['The question can be answered by one of the statements alone but not by the other.','The question can be answered by using either statement alone.','The question can be answered by using both the statements together, but cannot be answered by using either statement alone.','The question cannot be answered by either of the statements.'], ans:2},
+ {id:'S2Q8', num:8, part:'Part C: Verbal Ability', html:`The sentences given below, when properly sequenced, form a coherent paragraph. Each sentence is labeled with a letter. Choose the most logical order of sentences to construct a coherent paragraph.<br>
+   A. This is now orthodoxy to which I subscribe \u2013 up to a point.<br>
+   B. It emerged from the mathematics of chance and statistics.<br>
+   C. Therefore the risk is measurable and manageable.<br>
+   D. The fundamental concept: Prices are not predictable, but the mathematical laws of chance can describe their fluctuations.<br>
+   E. This is how what business schools now call modern finance was born.`, opts:['A D C B E','E B D C A','A B D C E','D C B E A'], ans:1},
+ {id:'S2Q9', num:9, part:'Part C: Verbal Ability', text:'As navigators, calendar makers, and other ___ of the night sky accumulated evidence to the contrary, ancient astronomers were forced to ___ that certain bodies might move in circles about points, which in turn moved in circles about the earth.', opts:['scrutinizers; believe','observers; agree','scrutinizers; suggest','observers; concede'], ans:3},
+ {id:'S2Q10', num:10, part:'Part C: Verbal Ability', html:`Choose the option that points out sentence(s) with grammatical error(s):<br>
+   I. I love the man\u2019s dancing on the table.<br>
+   II. In 1986 Elie Wiesel was named the Nobel Peace Prize recipient, an honour established by Alfred Nobel.<br>
+   III. Neither of the recommendations works as well as we thought they would.<br>
+   IV. Either the Minister or the Minister\u2019s wife will have to excuse themselves from the reception to speak to the caterer.`, opts:['I and V','I and IV','II and V','III and IV'], ans:3}
+];
+
+/* =====================================================================
+   BUILD SECTIONS (eager: General Instructions, Participant Details,
+   Demographics, Background Information - none of these depend on the
+   randomised condition, so they are built immediately at page load)
+===================================================================== */
+let sidx = 0;
+let mainFlowBuilt = false;
+
+// ---------- GENERAL INSTRUCTIONS ----------
+addSection(sidx, `
+  <h1 class="sec-title">Participant Survey</h1>
+  <div class="instructions">
+    <p style="margin:0 0 10px;">This survey contains several sections. You will not be able to return to the previous sections once you have moved on. Each section has its own instructions. Some sections involve real monetary rewards based on your decisions and performance. Read each section\u2019s instructions carefully before you begin. Do not discuss your answers with other participants. Raise your hand if you have any questions.</p>
+    <p style="margin:0;"><b>Note:</b> If you try to switch to other tabs while filling in the survey, your survey will automatically close and you will no longer be able to continue. However, if you mistakenly refresh the page or close the tab, you may start the survey from where you left off, after entering your institutional Email ID. You will only be able to resume once &mdash; if you close or refresh the tab and try to resume again after that, the survey will close and you will not be able to continue.</p>
+  </div>
+  <div class="navrow"><button onclick="goTo(1)">Begin</button></div>
+`);
+sidx++;
+
+// ---------- PARTICIPANT DETAILS ----------
+addSection(sidx, `
+  <h1 class="sec-title">Participant Details</h1>
+  <p class="sec-sub">Please provide your name and institutional email address before continuing.</p>
+  <div class="card">
+    <div class="qtext">Full Name <span style="color:var(--warn)">*</span></div>
+    <input type="text" id="pName" placeholder="Your full name" autocomplete="name">
+  </div>
+  <div class="card">
+    <div class="qtext">Institutional Email Address <span style="color:var(--warn)">*</span></div>
+    <input type="email" id="pEmail" placeholder="you@youruniversity.edu" autocomplete="email">
+  </div>
+  <div class="flag" id="participantFlag" style="display:none;"></div>
+  <div class="navrow"><button onclick="finishParticipantDetails()">Continue</button></div>
+`);
+const SEC_PARTICIPANT = sidx; sidx++;
+window.finishParticipantDetails = function(){
+  const flagEl = document.getElementById('participantFlag');
+  flagEl.style.display = 'none';
+  const nameVal = document.getElementById('pName').value.trim();
+  const emailVal = document.getElementById('pEmail').value.trim();
+  if(!nameVal || !emailVal){
+    flagEl.textContent = 'Please enter your name and institutional email address before continuing.';
+    flagEl.style.display = 'block';
+    return;
+  }
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if(!emailPattern.test(emailVal)){
+    flagEl.textContent = 'Please enter a valid email address.';
+    flagEl.style.display = 'block';
+    return;
+  }
+  const normalizedEmail = emailVal.toLowerCase();
+  if(isEmailBlocked(normalizedEmail)){
+    document.getElementById('emailBlockedOverlay').style.display = 'flex';
+    return;
+  }
+  const existing = getProgressFor(normalizedEmail);
+  if(existing && existing.completed){
+    document.getElementById('alreadyCompletedOverlay').style.display = 'flex';
+    return;
+  }
+  if(existing && ((existing.answers && existing.answers.resumeCount) || 0) >= 1){
+    document.getElementById('resumeLimitOverlay').style.display = 'flex';
+    return;
+  }
+  if(existing){
+    pendingResume = { name: nameVal, email: normalizedEmail, snapshot: existing };
+    document.getElementById('resumeOverlay').style.display = 'flex';
+    return;
+  }
+  currentParticipantEmail = normalizedEmail;
+  answers.participant = { name: nameVal, email: normalizedEmail };
+  goTo(SEC_PARTICIPANT+1);
+};
+window.resumeSavedProgress = function(){
+  if(!pendingResume) return;
+  const snap = pendingResume.snapshot;
+  Object.assign(R, snap.R);
+  Object.assign(answers, snap.answers);
+  answers.meta = R;
+  answers.resumeCount = ((snap.answers && snap.answers.resumeCount) || 0) + 1;
+  tabSwitchCount = (answers.tabSwitchEvents||[]).length;
+  currentParticipantEmail = pendingResume.email;
+  document.getElementById('resumeOverlay').style.display = 'none';
+  buildMainFlowAndGo(snap.flowIndex);
+};
+
+// ---------- SECTION 0: DEMOGRAPHICS ----------
+const SEC_DEMOGRAPHICS = sidx;
+addSection(sidx, `
+  <h1 class="sec-title">Section 0 &middot; Demographics</h1>
+  <p class="sec-sub">Please answer all questions. Your responses are completely confidential and will only be used for research purposes.</p>
+  <div class="card"><div class="qtext">1. Age</div><input type="number" id="d_age" min="15" max="90"> years</div>
+  <div class="card">
+    <div class="qtext">2. Gender</div>
+    <div class="opts">${['Male','Female','Non-binary or third gender','Prefer not to say'].map(x=>`<label><input type="radio" name="d_gender" value="${x}"><span>${x}</span></label>`).join('')}</div>
+  </div>
+  <div class="card"><div class="qtext">3. Programme of study</div><input type="text" id="d_programme"></div>
+  <div class="card">
+    <div class="qtext">4. Year of study</div>
+    <div class="opts">${['First year','Second year','Third year','Fourth year or above'].map(x=>`<label><input type="radio" name="d_year" value="${x}"><span>${x}</span></label>`).join('')}</div>
+  </div>
+  <div class="card"><div class="qtext">5. University / Institution</div><input type="text" id="d_univ"></div>
+  <div class="card">
+    <div class="qtext">6. Your prior degree</div>
+    <div class="opts">
+      <label><input type="radio" name="d_priordegree" value="STEM"><span>STEM (e.g., Engineering, Computer Science, Economics, Mathematics, Physics, Biology)</span></label>
+      <label><input type="radio" name="d_priordegree" value="Non-STEM"><span>Non-STEM (e.g., Business, Psychology, History, Literature)</span></label>
+      <label><input type="radio" name="d_priordegree" value="Other" onclick="document.getElementById('d_priordegree_other').style.display='inline-block'"><span>Other (please specify):</span> <input type="text" id="d_priordegree_other" style="width:50%;display:none;margin-left:6px;"></label>
+    </div>
+  </div>
+  <div class="card">
+    <div class="qtext">7. Highest parental (Mother) education</div>
+    <div class="opts">${['Less than secondary school','Secondary school (Class 10 or 12)','Undergraduate degree','Postgraduate degree or higher'].map(x=>`<label><input type="radio" name="d_mothered" value="${x}"><span>${x}</span></label>`).join('')}</div>
+  </div>
+  <div class="card">
+    <div class="qtext">8. Highest parental (Father) education</div>
+    <div class="opts">${['Less than secondary school','Secondary school (Class 10 or 12)','Undergraduate degree','Postgraduate degree or higher'].map(x=>`<label><input type="radio" name="d_fathered" value="${x}"><span>${x}</span></label>`).join('')}</div>
+  </div>
+  <div class="card"><div class="qtext">9. Years of Work Experience (Internship does not count as work experience)</div><input type="number" id="d_workexp" min="0"></div>
+  <div class="navrow"><button onclick="finishDemographics()">Continue</button></div>
+`);
+sidx++;
+window.finishDemographics = function(){
+  answers.demographics = {
+    age: document.getElementById('d_age').value,
+    gender: (document.querySelector('input[name=d_gender]:checked')||{}).value || null,
+    programme: document.getElementById('d_programme').value,
+    yearOfStudy: (document.querySelector('input[name=d_year]:checked')||{}).value || null,
+    university: document.getElementById('d_univ').value,
+    priorDegree: (document.querySelector('input[name=d_priordegree]:checked')||{}).value || null,
+    priorDegreeOther: document.getElementById('d_priordegree_other').value,
+    motherEd: (document.querySelector('input[name=d_mothered]:checked')||{}).value || null,
+    fatherEd: (document.querySelector('input[name=d_fathered]:checked')||{}).value || null,
+    workExp: document.getElementById('d_workexp').value
+  };
+  goTo(SEC_DEMOGRAPHICS+1);
+};
+
+// ---------- SECTION 1: BACKGROUND INFORMATION ----------
+const SEC_BACKGROUND = sidx;
+addSection(sidx, `
+  <h1 class="sec-title">Section 1 &middot; Background Information</h1>
+  <p class="sec-sub">Please answer the following questions before we begin. There are no right or wrong answers.</p>
+  <div class="card">
+    <div class="qtext">1. How familiar are you with penalty-based scoring rules in competitive examinations (for example, deductions for wrong answers in CAT, JEE, or similar tests)?</div>
+    <div class="scale5">
+      <label class="pt"><input type="radio" name="familiarity" value="1"><span>Not at all familiar</span></label>
+      <label class="pt"><input type="radio" name="familiarity" value="2"><span>Somewhat familiar</span></label>
+      <label class="pt"><input type="radio" name="familiarity" value="3"><span>Very familiar</span></label>
+    </div>
+  </div>
+  <div class="card">
+    <div class="qtext">2. Approximately how many competitive examinations with penalty scoring have you taken in the past two years?</div>
+    <input type="number" id="examCount" min="0">
+  </div>
+  <div class="card">
+    <div class="qtext">3. Are you currently preparing for any of the following examinations? (Tick all that apply)</div>
+    <div class="opts">
+      ${['CAT (Common Admission Test)','JEE (Joint Entrance Examination)','CLAT (Common Law Admission Test)','GMAT or GRE','UPSC or Civil Services'].map(x=>`<label><input type="checkbox" name="examprep" value="${x}"><span>${x}</span></label>`).join('')}
+      <label><input type="checkbox" id="examOtherCk"><span>Other:</span> <input type="text" id="examOtherText" style="width:60%;display:inline-block;margin-left:6px;"></label>
+    </div>
+  </div>
+  <div class="card">
+    <div class="qtext">4. Please answer the following four questions. Take your time and work carefully. These are not trick questions.</div>
+    <div class="qtext">4a. Imagine we are throwing a five-sided die 50 times. On average, out of 50 throws, how many times would this five-sided die show an odd number (1, 3, or 5)? <input type="number" id="bnt_a" style="width:100px;display:inline-block;"> times out of 50</div>
+    <div class="qtext">4b. Out of 1000 people in a small town, 500 are members of a choir. Out of these 500 members, 100 are men. Out of the 500 inhabitants who are not in the choir, 300 are men. What is the probability that a randomly drawn man is a member of the choir? <input type="text" id="bnt_b" style="width:180px;display:inline-block;" placeholder="fraction or percentage"></div>
+    <div class="qtext">4c. Imagine we are throwing a loaded die (6 sides). The probability that the die shows a 6 is twice as high as the probability of each of the other numbers. On average, out of 70 throws, how many times would the die show the number 6? <input type="number" id="bnt_c" style="width:100px;display:inline-block;"> times out of 70</div>
+    <div class="qtext">4d. In a forest 20% of mushrooms are red, 50% brown and 30% white. A red mushroom is poisonous with a probability of 20%. A mushroom that is not red is poisonous with a probability of 5%. What is the probability that a poisonous mushroom in the forest is red? <input type="text" id="bnt_d" style="width:180px;display:inline-block;" placeholder="percentage"></div>
+  </div>
+  <div class="card">
+    <div class="qtext">5. Which category of roles (typically sought by company recruiters) do you believe you are best suited for?</div>
+    <div class="opts">
+      <label><input type="radio" name="rolecat" value="Initiative-driven"><span><b>Initiative-driven</b> (A role requiring initiative and commitment under uncertainty). An example of such a role: A strategy consultant who recommends a bold market entry plan to a client, knowing not all assumptions are fully validated.</span></label>
+      <label><input type="radio" name="rolecat" value="Precision-driven"><span><b>Precision-driven</b> (A role requiring precision and error avoidance). An example of such a role: A tax manager who ensures every rupee of GST filing is accurate, because a wrong submission triggers penalties and scrutiny.</span></label>
+    </div>
+  </div>
+  <div class="navrow"><button onclick="finishBackground()">Continue to Section 2</button></div>
+`);
+sidx++;
+window.finishBackground = function(){
+  answers.background = {
+    familiarity: (document.querySelector('input[name=familiarity]:checked')||{}).value || null,
+    examCount: document.getElementById('examCount').value,
+    examPrep: Array.from(document.querySelectorAll('input[name=examprep]:checked')).map(x=>x.value)
+                .concat(document.getElementById('examOtherCk').checked ? ['Other: '+document.getElementById('examOtherText').value] : []),
+    berlin: { a:document.getElementById('bnt_a').value, b:document.getElementById('bnt_b').value, c:document.getElementById('bnt_c').value, d:document.getElementById('bnt_d').value },
+    roleCategory: (document.querySelector('input[name=rolecat]:checked')||{}).value || null
+  };
+  buildMainFlowAndGo();
+};
+
+function buildMainFlowAndGo(jumpToIndex){
+if(mainFlowBuilt){ if(jumpToIndex !== undefined && jumpToIndex !== null){ goTo(jumpToIndex); } return; }
+mainFlowBuilt = true;
+
+// ---------- SECTION 2: STAGE 1 ABILITY ASSESSMENT ----------
+addSection(sidx, `
+  <h1 class="sec-title">Section 2 &middot; Stage 1 Ability Assessment</h1>
+  <div class="instructions">
+    This section contains 10 multiple-choice questions spanning three areas: Quantitative Reasoning, Data Interpretation and Logical Reasoning, and Verbal Ability. For each question, select the single best answer by choosing any one of the four options A, B, C, or D.
+    <br><b>Payment rule:</b> You earn Rs. 15 for each correct answer. Incorrect answers and skipped questions earn Rs. 0. Since there is no penalty for incorrect answers, you should attempt every question.
+    <br><b>Time allowed: 18 minutes.</b>
+  </div>
+  <h2 class="part-title">Part A: Quantitative Reasoning (Questions 1&ndash;4)</h2>
+  ${renderMCQBlock(STAGE1_QUESTIONS.slice(0,4), {allowSkip:false})}
+  <h2 class="part-title">Part B: Data Interpretation and Logical Reasoning (Questions 5&ndash;7)</h2>
+  ${renderMCQBlock(STAGE1_QUESTIONS.slice(4,7), {allowSkip:false})}
+  <h2 class="part-title">Part C: Verbal Analysis (Questions 8&ndash;10)</h2>
+  ${renderMCQBlock(STAGE1_QUESTIONS.slice(7,10), {allowSkip:false})}
+  <div class="navrow"><button onclick="finishStage1()">Submit Section 2</button></div>
+`);
+const SEC_STAGE1 = sidx; sidx++;
+function beginStage1(){ startTimer(18*60, null, ()=>{ finishStage1(true); }); }
+window.finishStage1 = function(auto){
+  stopTimer();
+  const {result} = collectMCQ(STAGE1_QUESTIONS);
+  answers.stage1 = { responses: result, autoSubmitted: !!auto };
+  goTo(SEC_STAGE1+1);
+};
+
+// ---------- SECTION 3: DECISION TASKS ----------
+// Task A: Risk Preferences
+const taskAProbs = [10,20,30,40,50,60,70,80,90,100];
+window.taskAChoice = function(rowIndex, idx){
+  setRadioAnswer('taskA_'+rowIndex, idx);
+  if(idx === 1){
+    for(let j = rowIndex+1; j < taskAProbs.length; j++){ setRadioAnswer('taskA_'+j, 1); }
+  }
+};
+addSection(sidx, `
+  <h1 class="sec-title">Section 3 &middot; Decision Tasks</h1>
+  <div class="instructions">
+    This section contains three decision tasks. At the end of the session, one decision from Task A and one decision from Task B will each be randomly selected and paid based on your choice. Task C will be paid based on your actual performance. Please treat every decision as if it is the one that will count for payment.
+  </div>
+  <h2 class="part-title">Task A</h2>
+  <div class="instructions">Below are 10 pairs of options. For each row, choose either Option A (the safer option) or Option B (the riskier option). One row will be randomly selected for payment.</div>
+  <table class="choicetable">
+    <thead><tr><th style="width:56px;">Row</th><th>Option A (safer)</th><th>Option B (riskier)</th></tr></thead>
+    <tbody>
+      ${taskAProbs.map((p,i)=>`
+      <tr data-qid="taskA_${i}">
+        <td class="rownum">${i+1}</td>
+        <td class="opts"><label><input type="radio" name="taskA_${i}" value="A" onchange="taskAChoice(${i},0)"><span>${p}% chance Rs 30,<br>${100-p}% chance Rs 25</span></label></td>
+        <td class="opts"><label><input type="radio" name="taskA_${i}" value="B" onchange="taskAChoice(${i},1)"><span>${p}% chance Rs 55,<br>${100-p}% chance Rs 1</span></label></td>
+      </tr>`).join('')}
+    </tbody>
+  </table>
+  <div class="flag" id="taskAFlag" style="display:none;">Please answer every row before continuing.</div>
+  <div class="navrow"><button onclick="finishTaskA()">Continue to Task B</button></div>
+`);
+const SEC_TASKA = sidx; sidx++;
+window.finishTaskA = function(){
+  let complete = true; const resp = {};
+  taskAProbs.forEach((p,i)=>{
+    const card = document.querySelector(`[data-qid="taskA_${i}"]`);
+    const val = card.dataset.answered;
+    if(val===undefined || val==='') complete=false;
+    resp['row'+i] = val==='0' ? 'A' : (val==='1' ? 'B' : null);
+  });
+  if(!complete){ document.getElementById('taskAFlag').style.display='block'; return; }
+  const chosenRow = Math.floor(Math.random()*10);
+  answers.taskA = { responses: resp, randomlySelectedRow: chosenRow };
+  goTo(SEC_TASKA+1);
+};
+
+// Task B: Loss Aversion
+const taskBLosses = [20,30,40,50,60,70];
+window.taskBChoice = function(rowIndex, idx){
+  setRadioAnswer('taskB_'+rowIndex, idx);
+  if(idx === 1){
+    for(let j = rowIndex+1; j < taskBLosses.length; j++){ setRadioAnswer('taskB_'+j, 1); }
+  }
+};
+addSection(sidx, `
+  <h1 class="sec-title">Task B</h1>
+  <div class="instructions">
+    Below are 6 lotteries. Each offers a 50% chance of winning Rs. 60 and a 50% chance of losing a varying amount. For each row, decide whether you Accept or Reject the lottery. One row will be randomly selected for payment. If you accepted and won, Rs. 60 will be added to your earnings. If you accepted and lost, the loss amount will be subtracted from your earnings. If you reject all the 6 lotteries, you will not lose any amount and will gain Rs. 0. You will always receive at least your participation fee, i.e. Rs. 100.
+  </div>
+  <table class="choicetable">
+    <thead><tr><th style="width:70px;">Row</th><th>Lottery</th><th style="width:100px;">Accept</th><th style="width:100px;">Reject</th></tr></thead>
+    <tbody>
+      ${taskBLosses.map((l,i)=>`
+      <tr data-qid="taskB_${i}">
+        <td class="rownum">${i+1}</td>
+        <td>50% chance you win Rs. 60, 50% chance you lose Rs. ${l}</td>
+        <td class="opts"><label><input type="radio" name="taskB_${i}" onchange="taskBChoice(${i},0)"></label></td>
+        <td class="opts"><label><input type="radio" name="taskB_${i}" onchange="taskBChoice(${i},1)"></label></td>
+      </tr>`).join('')}
+    </tbody>
+  </table>
+  <div class="flag" id="taskBFlag" style="display:none;">Please answer every row before continuing.</div>
+  <div class="navrow"><button onclick="finishTaskB()">Continue to Task C</button></div>
+`);
+const SEC_TASKB = sidx; sidx++;
+window.finishTaskB = function(){
+  let complete = true; const resp = {};
+  taskBLosses.forEach((l,i)=>{
+    const card = document.querySelector(`[data-qid="taskB_${i}"]`);
+    const val = card.dataset.answered;
+    if(val===undefined||val==='') complete=false;
+    resp['row'+i] = val==='0'?'Accept':(val==='1'?'Reject':null);
+  });
+  if(!complete){ document.getElementById('taskBFlag').style.display='block'; return; }
+  const chosenRow = Math.floor(Math.random()*6);
+  answers.taskB = { responses: resp, randomlySelectedRow: chosenRow };
+  goTo(SEC_TASKB+1);
+  beginRound1();
+};
+
+// Task C: Competitive Orientation (fixed addition problems, per the paper instrument)
+const round1Nums = [[23,47,31,58,12],[64,18,37,55,29],[41,76,22,39,84],[55,33,17,68,44],[72,28,45,11,63],[36,52,89,14,27],[19,83,46,35,71],[57,24,88,43,16],[92,31,48,67,25],[38,62,73,19,54],[81,27,34,56,42],[14,79,53,28,66]];
+const round2Nums = [[44,26,71,38,53],[87,13,59,32,46],[21,65,94,47,18],[73,39,28,82,15],[56,41,67,23,88],[34,79,12,55,43],[91,25,68,37,74],[48,83,16,62,31],[27,54,89,43,76],[66,33,51,84,19],[42,77,28,61,35],[93,17,44,58,82]];
+function renderSumRows(rows, prefix){
+  return rows.map((nums,i)=>`<div class="rowline"><label>${nums.join(' + ')} =</label><input type="number" id="${prefix}_${i}" style="width:110px;"></div>`).join('');
+}
+addSection(sidx, `
+  <h1 class="sec-title">Task C &mdash; Round 1</h1>
+  <div class="instructions">You have <b>1 minute</b> to add and type in as many sets of five two-digit numbers as possible. Each correct sum earns Rs. 5 under the piece-rate scheme.</div>
+  <div class="card">${renderSumRows(round1Nums,'r1')}</div>
+  <div class="navrow"><button onclick="finishRound1()">Submit Round 1</button></div>
+`);
+const SEC_ROUND1 = sidx; sidx++;
+function beginRound1(){ startTimer(1*60, null, ()=>finishRound1(true)); }
+window.finishRound1 = function(auto){
+  stopTimer();
+  const resp = round1Nums.map((nums,i)=>{
+    const v = document.getElementById('r1_'+i).value;
+    const correctSum = nums.reduce((a,b)=>a+b,0);
+    return { nums, entered: v, correctSum, isCorrect: Number(v)===correctSum };
+  });
+  answers.taskC.round1 = { responses: resp, autoSubmitted: !!auto, correctCount: resp.filter(r=>r.isCorrect).length };
+  goTo(SEC_ROUND1+1);
+};
+
+addSection(sidx, `
+  <h1 class="sec-title">Task C: Choose Your Round 2 Payment Scheme</h1>
+  <div class="instructions">
+    You will now complete another 1-minute round of the same addition task. Before you begin, choose how your Round 2 performance will be paid. Choose one option only.
+    <ul>
+      <li><b>Option A (Piece-Rate):</b> Rs. 5 for each correct answer in Round 2, regardless of how others perform.</li>
+      <li><b>Option B (Tournament):</b> Rs. 20 for each correct answer in Round 2 only if your total score in Round 2 is higher than another randomly selected participant from a previous round of this study. If you do not have the higher score, you earn Rs. 0 for Round 2.</li>
+    </ul>
+  </div>
+  <div class="card" data-qid="taskCchoice">
+    <div class="opts">
+      <label><input type="radio" name="taskCchoice" onchange="selectOpt('taskCchoice',0)"><span>Option A (Piece-Rate)</span></label>
+      <label><input type="radio" name="taskCchoice" onchange="selectOpt('taskCchoice',1)"><span>Option B (Tournament)</span></label>
+    </div>
+  </div>
+  <div class="flag" id="choiceFlag" style="display:none;">Please select a payment scheme before continuing.</div>
+  <div class="navrow"><button onclick="confirmChoiceAndStartR2()">Begin Round 2</button></div>
+`);
+const SEC_CHOICE = sidx; sidx++;
+window.confirmChoiceAndStartR2 = function(){
+  const card = document.querySelector('[data-qid="taskCchoice"]');
+  const val = card.dataset.answered;
+  if(val===undefined||val===''){ document.getElementById('choiceFlag').style.display='block'; return; }
+  answers.taskC.round2Choice = val==='0'?'Piece-Rate':'Tournament';
+  goTo(SEC_CHOICE+1);
+  beginRound2();
+};
+
+addSection(sidx, `
+  <h1 class="sec-title">Task C &mdash; Round 2</h1>
+  <div class="instructions">You have <b>1 minute</b>. Payment scheme selected: <span id="chosenSchemeLabel"></span></div>
+  <div class="card">${renderSumRows(round2Nums,'r2')}</div>
+  <div class="navrow"><button onclick="finishRound2()">Submit Round 2</button></div>
+`);
+const SEC_ROUND2 = sidx; sidx++;
+function beginRound2(){
+  document.getElementById('chosenSchemeLabel').textContent = answers.taskC.round2Choice;
+  startTimer(1*60, null, ()=>finishRound2(true));
+}
+window.finishRound2 = function(auto){
+  stopTimer();
+  const resp = round2Nums.map((nums,i)=>{
+    const v = document.getElementById('r2_'+i).value;
+    const correctSum = nums.reduce((a,b)=>a+b,0);
+    return { nums, entered: v, correctSum, isCorrect: Number(v)===correctSum };
+  });
+  answers.taskC.round2 = { responses: resp, autoSubmitted: !!auto, correctCount: resp.filter(r=>r.isCorrect).length };
+  goTo(SEC_ROUND2+1);
+};
+
+// ---------- SECTION 4: SCORING RULE REVEAL ----------
+const conditionText = {
+  1: {label:'Condition 1 (Moderate Penalty, Low Numerosity)', correct:1, wrong:-0.25},
+  2: {label:'Condition 2 (Moderate Penalty, High Numerosity)', correct:5, wrong:-1.25}
+};
+addSection(sidx, `
+  <h1 class="sec-title">Section 4 &middot; Stage 2 Assessment</h1>
+  <div class="instructions warn">
+    <b>Your Scoring Rule for This Section:</b><br>
+    Correct answer = <b>${conditionText[R.condition].correct>0?'+':''}${conditionText[R.condition].correct}</b> point(s). Wrong answer = <b>${conditionText[R.condition].wrong}</b> point(s). Skipped = <b>0</b> points.
+    <br><br>
+    <b>Ranking and Bonus:</b> Your standardized score relative to all participants (around 600) in this study determines your rank. The top 10% of participants will receive an additional bonus of Rs. 1000. Top 11&ndash;25% of participants will receive an additional bonus of Rs. 500. There is no payment for getting an individual question correct.
+    <br><br>You must either choose any one of the four options A, B, C, D or tick the Skip box for every question. Skipping a question will not reward or cost you any score.
+    <br><b>Time allowed: 18 minutes.</b>
+  </div>
+  <div class="navrow"><button onclick="goTo(${sidx+1})">Continue to Grading Rule Check</button></div>
+`);
+sidx++;
+
+// ---------- COMPREHENSION CHECK ----------
+const CC_FIRST_Q1 = [5, 1, 0.25, 1.25, 0];
+const CC_FIRST_Q2 = [-1.25, -0.25, 0, -1, -5];
+const CC_RETRY_Q1 = [5, 1, 1.5, 0.25, 0.5, 1.25, 0];
+const CC_RETRY_Q2 = [1.25, 1.5, 0.25, 0.5, 0, 1, 5];
+let ccAttempt = 1;
+addSection(sidx, `
+  <h1 class="sec-title">Grading Rule Check</h1>
+  <div class="instructions">For each of the following 2 questions, please choose any 1 option.</div>
+  <div class="card" data-qid="cc_q1">
+    <div class="qtext" id="cc_q1_text">Question 1<br>If you answer a question correctly, how many points will you receive?</div>
+    <div class="opts" id="cc_q1_opts"></div>
+  </div>
+  <div class="card" data-qid="cc_q2">
+    <div class="qtext" id="cc_q2_text">Question 2<br>If you answer a question incorrectly, how many points will you receive?</div>
+    <div class="opts" id="cc_q2_opts"></div>
+  </div>
+  <div id="ccFeedback" class="instructions warn" style="display:none;"></div>
+  <div class="flag" id="ccFlag" style="display:none;">Please answer both questions.</div>
+  <div class="navrow"><button id="ccSubmitBtn" onclick="submitComprehensionCheck()">Submit</button></div>
+`);
+const SEC_COMPCHECK = sidx; sidx++;
+function fmtPts(v){ return (v>0?'+':'') + v; }
+function renderCCOptions(){
+  const q1Opts = ccAttempt===1 ? CC_FIRST_Q1 : CC_RETRY_Q1;
+  const q2Opts = ccAttempt===1 ? CC_FIRST_Q2 : CC_RETRY_Q2;
+  document.getElementById('cc_q1_text').innerHTML = 'Question 1<br>If you answer a question correctly, how many points will you receive?';
+  document.getElementById('cc_q2_text').innerHTML = ccAttempt===1
+    ? 'Question 2<br>If you answer a question incorrectly, how many points will you receive?'
+    : 'Question 2<br>Under your scoring rule, how many points do you lose for an incorrect answer?';
+  document.getElementById('cc_q1_opts').innerHTML = q1Opts.map((v,i)=>`<label><input type="radio" name="cc_q1" onchange="selectOpt('cc_q1',${i})"><span>${fmtPts(v)}</span></label>`).join('');
+  document.getElementById('cc_q2_opts').innerHTML = q2Opts.map((v,i)=>`<label><input type="radio" name="cc_q2" onchange="selectOpt('cc_q2',${i})"><span>${ccAttempt===1 ? fmtPts(v) : v}</span></label>`).join('');
+  document.querySelector('[data-qid="cc_q1"]').dataset.answered = '';
+  document.querySelector('[data-qid="cc_q2"]').dataset.answered = '';
+  document.getElementById('ccFlag').style.display = 'none';
+}
+renderCCOptions(); // populate the first-attempt options as soon as this section is built
+
+window.submitComprehensionCheck = function(){
+  const q1card = document.querySelector('[data-qid="cc_q1"]');
+  const q2card = document.querySelector('[data-qid="cc_q2"]');
+  const q1val = q1card.dataset.answered;
+  const q2val = q2card.dataset.answered;
+  if(q1val===undefined||q1val===''||q2val===undefined||q2val===''){
+    document.getElementById('ccFlag').style.display = 'block';
+    return;
+  }
+  const q1Opts = ccAttempt===1 ? CC_FIRST_Q1 : CC_RETRY_Q1;
+  const q2Opts = ccAttempt===1 ? CC_FIRST_Q2 : CC_RETRY_Q2;
+  const chosenQ1 = q1Opts[Number(q1val)];
+  const chosenQ2 = q2Opts[Number(q2val)];
+  const correctVal = conditionText[R.condition].correct;
+  const wrongVal = conditionText[R.condition].wrong;
+  const expectedQ2 = ccAttempt===1 ? wrongVal : Math.abs(wrongVal);
+  const isCorrect = (chosenQ1===correctVal) && (chosenQ2===expectedQ2);
+  answers.comprehensionCheck['attempt'+ccAttempt] = { q1: chosenQ1, q2: chosenQ2, correct: isCorrect };
+  if(isCorrect){
+    document.getElementById('ccFeedback').className = 'instructions';
+    document.getElementById('ccFeedback').style.display = 'block';
+    document.getElementById('ccFeedback').innerHTML = 'Correct! Now proceed to the main assessment.';
+    document.getElementById('ccSubmitBtn').textContent = 'Continue to Assessment';
+    document.getElementById('ccSubmitBtn').onclick = function(){ goTo(SEC_COMPCHECK+1); beginStage2(); };
+    return;
+  }
+  if(ccAttempt===1){
+    ccAttempt = 2;
+    document.getElementById('ccFeedback').style.display = 'block';
+    document.getElementById('ccFeedback').innerHTML = `That wasn\u2019t quite right. Under your scoring rule, a correct answer earns <b>${fmtPts(correctVal)}</b> point(s), and an incorrect answer costs <b>${Math.abs(wrongVal)}</b> point(s). Please try again.`;
+    renderCCOptions();
+  } else {
+    document.getElementById('ccFeedback').style.display = 'block';
+    document.getElementById('ccFeedback').innerHTML = `Under your scoring rule, a correct answer earns <b>${fmtPts(correctVal)}</b> point(s), and an incorrect answer costs <b>${Math.abs(wrongVal)}</b> point(s).`;
+    document.getElementById('ccSubmitBtn').textContent = 'Continue to Assessment';
+    document.getElementById('ccSubmitBtn').onclick = function(){ goTo(SEC_COMPCHECK+1); beginStage2(); };
+  }
+};
+
+// ---------- SECTION 4 MAIN: STAGE 2 ASSESSMENT ----------
+addSection(sidx, `
+  <h1 class="sec-title">Section 4 &middot; Stage 2 Assessment</h1>
+  <div class="instructions">
+    For each of the 10 questions below, choose any one of the 4 options A, B, C, D OR tick the Skip box. Do not leave any question entirely blank.
+    <br><b>Time allowed: 18 minutes.</b> Scoring rule: Correct = <b>${conditionText[R.condition].correct>0?'+':''}${conditionText[R.condition].correct}</b>, Wrong = <b>${conditionText[R.condition].wrong}</b>, Skipped = <b>0</b>
+  </div>
+  <h2 class="part-title">Part A: Quantitative Reasoning (Questions 1&ndash;4)</h2>
+  ${renderMCQBlock(STAGE2_QUESTIONS.slice(0,4), {allowSkip:true})}
+  <h2 class="part-title">Part B: Data Interpretation and Logical Reasoning (Questions 5&ndash;7)</h2>
+  ${renderMCQBlock(STAGE2_QUESTIONS.slice(4,7), {allowSkip:true})}
+  <h2 class="part-title">Part C: Verbal Ability (Questions 8&ndash;10)</h2>
+  ${renderMCQBlock(STAGE2_QUESTIONS.slice(7,10), {allowSkip:true})}
+  <div class="navrow"><button onclick="finishStage2()">Submit Section 4</button></div>
+`);
+const SEC_STAGE2 = sidx; sidx++;
+function beginStage2(){ startTimer(18*60, null, ()=>finishStage2(true)); }
+window.finishStage2 = function(auto){
+  stopTimer();
+  const {result} = collectMCQ(STAGE2_QUESTIONS);
+  answers.stage2 = { responses: result, autoSubmitted: !!auto };
+  goTo(SEC_STAGE2+1);
+};
+
+// ---------- SECTION 5: CONFIDENCE ELICITATION ----------
+addSection(sidx, `
+  <h1 class="sec-title">Section 5</h1>
+  <div class="instructions">Please answer the following two questions about your Section 4 performance. Answer based on your honest personal belief.</div>
+  <div class="card">
+    <div class="qtext">Question 1: Out of the 10 questions in Section 4, how many do you think you answered correctly?</div>
+    I think I answered approximately <input type="number" id="confAbs" style="width:100px;display:inline-block;" min="0" max="10"> questions correctly out of 10.
+    <div class="footnote">Bonus of Rs. 50 paid if your estimate is within 2 of your actual number of correct answers.</div>
+  </div>
+  <div class="card">
+    <div class="qtext">Question 2: Compared to all other participants in today\u2019s session, how do you think your Section 4 performance ranks?</div>
+    <div class="opts">
+      <label><input type="radio" name="confRel" value="Top third"><span>Top third of participants</span></label>
+      <label><input type="radio" name="confRel" value="Middle third"><span>Middle third</span></label>
+      <label><input type="radio" name="confRel" value="Bottom third"><span>Bottom third</span></label>
+    </div>
+    <div class="footnote">This question is for research purposes only and does not affect your payment.</div>
+  </div>
+  <div class="flag" id="confFlag" style="display:none;">Please answer both questions.</div>
+  <div class="navrow"><button onclick="finishConfidence()">Continue to Post-Experiment Survey</button></div>
+`);
+const SEC_CONFIDENCE = sidx; sidx++;
+window.finishConfidence = function(){
+  const abs = document.getElementById('confAbs').value;
+  const rel = (document.querySelector('input[name=confRel]:checked')||{}).value;
+  if(abs===''||!rel){ document.getElementById('confFlag').style.display='block'; return; }
+  answers.confidence = { absoluteEstimate: abs, relativeRank: rel };
+  goTo(SEC_CONFIDENCE+1);
+};
+
+// ---------- SECTION 6: POST-EXPERIMENT SURVEY ----------
+function likertRow(id, text){
+  return `<div class="likert-row" data-likert="${id}">
+    <div style="max-width:55%;">${text}</div>
+    <div class="likert-scale">
+      ${[1,2,3,4,5,6,7].map(n=>`<label><input type="radio" name="${id}" value="${n}" onchange="likertSet('${id}',${n})">${n}</label>`).join('')}
+    </div>
+  </div>`;
+}
+const postSurveyItems = [
+  {id:'ps1', text:'The penalties in this test felt large.'},
+  {id:'ps2', text:'I was worried about losing points for wrong answers.'},
+  {id:'ps3', text:'The stakes in this assessment felt high.'},
+  {id:'ps4', text:'I found the scoring rule easy to understand. (R)'},
+  {id:'ps5', text:'Skipping a question felt safer than risking a wrong answer.'}
+];
+addSection(sidx, `
+  <h1 class="sec-title">Section 6 &middot; Post-Experiment Survey</h1>
+  <div class="instructions">Please rate your agreement with each statement using a scale from 1 to 7: 1 = Strongly Disagree &hellip; 4 = Neither Agree nor Disagree &hellip; 7 = Strongly Agree. Answer based on your experience in Section 4 only. (R) indicates a reverse-coded item.</div>
+  <div class="card">${postSurveyItems.map(it=>likertRow(it.id, it.text)).join('')}</div>
+  <div class="flag" id="postSurveyFlag" style="display:none;">Please rate every statement.</div>
+  <div class="navrow"><button onclick="finishPostSurvey()">Finish &amp; See Summary</button></div>
+`);
+const SEC_POSTSURVEY = sidx; sidx++;
+const postSurveyVals = {};
+window.likertSet = function(id, val){ postSurveyVals[id]=val; };
+window.finishPostSurvey = function(){
+  const allDone = postSurveyItems.every(it=>postSurveyVals[it.id]!==undefined);
+  if(!allDone){ document.getElementById('postSurveyFlag').style.display='block'; return; }
+  answers.postSurvey = Object.assign({}, postSurveyVals);
+  answers.completedAt = new Date().toISOString();
+  computeEarnings();
+  document.getElementById('earningsTotal').textContent = 'Rs. ' + answers.earnings.total;
+  goTo(SEC_POSTSURVEY+1);
+};
+
+// ---------- FINAL SUMMARY ----------
+addSection(sidx, `
+  <h1 class="sec-title">End of Survey</h1>
+  <div class="instructions">Thank you for your participation. Please remain seated until we see your final earnings below and pay you the amount.</div>
+  <div class="card" style="text-align:center;padding:32px 18px;">
+    <div style="font-size:14px;color:#5a5f52;letter-spacing:.03em;text-transform:uppercase;">Your Total Earnings</div>
+    <div id="earningsTotal" style="font-family:var(--serif);font-size:44px;font-weight:700;color:var(--accent);margin-top:8px;">Rs. 0</div>
+  </div>
+`);
+const SEC_FINAL = sidx; sidx++;
+
+function computeEarnings(){
+  const FIXED_FEE = 100;
+  let stage1Correct = 0;
+  Object.values(answers.stage1.responses || {}).forEach(r=>{ if(r && r.chosen === r.correct) stage1Correct++; });
+  const stage1Pay = stage1Correct * 15;
+  const round1Correct = (answers.taskC.round1 && answers.taskC.round1.correctCount) || 0;
+  const round1Pay = round1Correct * 5;
+  const total = FIXED_FEE + stage1Pay + round1Pay;
+  answers.earnings = {
+    fixedFee: FIXED_FEE,
+    stage1: { correctCount: stage1Correct, pay: stage1Pay },
+    taskCRound1: { correctCount: round1Correct, pay: round1Pay },
+    total: total,
+    note: 'Total shown to participant includes only the fixed fee, Stage 1 Ability Assessment, and Task C Round 1. Other task/bonus payouts (Task A, Task B, Task C Round 2, Stage 2, confidence bonus, ranking bonus) are determined by the experimenter after the full session.'
+  };
+  return answers.earnings;
+}
+
+/* =====================================================================
+   INIT (deferred flow)
+===================================================================== */
+flow.length = sidx;
+if(jumpToIndex !== undefined && jumpToIndex !== null){
+  goTo(jumpToIndex);
+  if(jumpToIndex === SEC_STAGE1) beginStage1();
+  else if(jumpToIndex === SEC_ROUND1) beginRound1();
+  else if(jumpToIndex === SEC_ROUND2) beginRound2();
+  else if(jumpToIndex === SEC_STAGE2) beginStage2();
+} else {
+  goTo(SEC_STAGE1);
+  beginStage1();
+}
+}
+
+/* =====================================================================
+   INIT (Instructions + Participant Details + Demographics + Background
+   are built eagerly above; the rest is built lazily once we know the
+   participant's email and whether we are resuming a saved session)
+===================================================================== */
+flow.length = 16;
+goTo(0);
+</script>
+</body>
+</html>
