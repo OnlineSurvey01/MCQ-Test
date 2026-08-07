@@ -403,6 +403,33 @@ const flow = [];
 let flowIndex = 0;
 const root = document.getElementById('sections');
 
+const CONFIDENCE_LEVELS = [
+  { label: 'Certain (100%)', value: 100, bonusCorrect: 10.00, bonusWrong: 0.00 },
+  { label: 'Fairly confident (75%)', value: 75, bonusCorrect: 9.50, bonusWrong: 4.50 },
+  { label: 'Somewhat confident (50%)', value: 50, bonusCorrect: 7.50, bonusWrong: 7.50 },
+  { label: 'Not confident, mostly guessing (25%)', value: 25, bonusCorrect: 4.50, bonusWrong: 9.50 }
+];
+
+function renderConfidenceCard(qid){
+  const cqid = qid + '_conf';
+  return `<div class="card" data-qid="${cqid}">
+    <div class="qtext">How confident are you that the answer you just selected is correct?</div>
+    <div class="opts">
+      ${CONFIDENCE_LEVELS.map((c,ci)=>`<label><input type="radio" name="${cqid}" value="${ci}" onchange="selectOpt('${cqid}',${ci})"><span>${c.label}</span></label>`).join('')}
+    </div>
+  </div>`;
+}
+
+function collectConfidence(qArray){
+  const result = {};
+  qArray.forEach(q=>{
+    const card = document.querySelector(`[data-qid="${q.id}_conf"]`);
+    const ans = card ? card.dataset.answered : undefined;
+    result[q.id] = (ans !== undefined && ans !== '') ? CONFIDENCE_LEVELS[Number(ans)].value : null;
+  });
+  return result;
+}
+
 function renderMCQBlock(qArray, opts){
   opts = opts || {};
   let html = '';
@@ -483,33 +510,6 @@ function setRadioAnswer(qid, idx){
   const radios = card.querySelectorAll('input[type=radio]');
   if(radios[idx]) radios[idx].checked = true;
   selectOpt(qid, idx);
-}
-
-  const CONFIDENCE_LEVELS = [
-  { label: 'Certain (100%)', value: 100, bonusCorrect: 10.00, bonusWrong: 0.00 },
-  { label: 'Fairly confident (75%)', value: 75, bonusCorrect: 9.50, bonusWrong: 4.50 },
-  { label: 'Somewhat confident (50%)', value: 50, bonusCorrect: 7.50, bonusWrong: 7.50 },
-  { label: 'Not confident, mostly guessing (25%)', value: 25, bonusCorrect: 4.50, bonusWrong: 9.50 }
-];
-
-function renderConfidenceCard(qid){
-  const cqid = qid + '_conf';
-  return `<div class="card" data-qid="${cqid}">
-    <div class="qtext">How confident are you that the answer you just selected is correct?</div>
-    <div class="opts">
-      ${CONFIDENCE_LEVELS.map((c,ci)=>`<label><input type="radio" name="${cqid}" value="${ci}" onchange="selectOpt('${cqid}',${ci})"><span>${c.label}</span></label>`).join('')}
-    </div>
-  </div>`;
-}
-
-function collectConfidence(qArray){
-  const result = {};
-  qArray.forEach(q=>{
-    const card = document.querySelector(`[data-qid="${q.id}_conf"]`);
-    const ans = card ? card.dataset.answered : undefined;
-    result[q.id] = (ans !== undefined && ans !== '') ? CONFIDENCE_LEVELS[Number(ans)].value : null;
-  });
-  return result;
 }
 
 /* =====================================================================
@@ -838,17 +838,18 @@ mainFlowBuilt = true;
 addSection(sidx, `
   <h1 class="sec-title">Section 2 &middot; Stage 1 Ability Assessment</h1>
   <div class="instructions">
-  This section contains 10 multiple-choice questions spanning three areas: Quantitative Reasoning, Data Interpretation and Logical Reasoning, and Verbal Ability. For each question, select the single best answer by choosing any one of the four options A, B, C, or D.
-  <br><b>Payment rule:</b> You earn Rs. 15 for each correct answer. Incorrect answers and skipped questions earn Rs. 0. Since there is no penalty for incorrect answers, you should attempt every question.
-  <br><br>After each question, you will also be asked how confident you are that your answer is correct. For each question, you earn an additional bonus based on your stated confidence and whether your answer was correct, according to the table below:
-  <table class="choicetable" style="margin-top:8px;font-size:12px;">
-    <thead><tr><th>If your confidence was:</th><th>Bonus if you were CORRECT:</th><th>Bonus if you were WRONG:</th></tr></thead>
-    <tbody>
-      ${CONFIDENCE_LEVELS.map(c=>`<tr><td>${c.label}</td><td>Rs. ${c.bonusCorrect.toFixed(2)}</td><td>Rs. ${c.bonusWrong.toFixed(2)}</td></tr>`).join('')}
-    </tbody>
-  </table>
-  <br><b>Time allowed: 20 minutes.</b>
-</div>
+    This section contains 10 multiple-choice questions spanning three areas: Quantitative Reasoning, Data Interpretation and Logical Reasoning, and Verbal Ability. For each question, select the single best answer by choosing any one of the four options A, B, C, or D.
+    <br><b>Payment rule:</b> You earn Rs. 15 for each correct answer. Incorrect answers and skipped questions earn Rs. 0. Since there is no penalty for incorrect answers, you should attempt every question.
+    <br><br>After each question, you will also be asked how confident you are that your answer is correct. For each question, you earn an additional bonus based on your stated confidence and whether your answer was correct, according to the table below:
+    <table class="choicetable" style="margin-top:8px;font-size:12px;">
+      <thead><tr><th>If your confidence was:</th><th>Bonus if you were CORRECT:</th><th>Bonus if you were WRONG:</th></tr></thead>
+      <tbody>
+        ${CONFIDENCE_LEVELS.map(c=>`<tr><td>${c.label}</td><td>Rs. ${c.bonusCorrect.toFixed(2)}</td><td>Rs. ${c.bonusWrong.toFixed(2)}</td></tr>`).join('')}
+      </tbody>
+    </table>
+    <br>In short: the more confident you say you are, the more you can earn if you were right, but the more you lose if you were wrong. Saying you are 50% confident always pays the same either way, so that is the honest answer when you genuinely do not know. You will always earn the most, on average, by honestly reporting how confident you actually feel about each answer.
+    <br><b>Time allowed: 20 minutes.</b>
+  </div>
   <h2 class="part-title">Part A: Quantitative Reasoning (Questions 1&ndash;4)</h2>
   ${renderMCQBlock(STAGE1_QUESTIONS.slice(0,4), {allowSkip:false, confidence:true})}
   <h2 class="part-title">Part B: Data Interpretation and Logical Reasoning (Questions 5&ndash;7)</h2>
@@ -858,6 +859,7 @@ addSection(sidx, `
   <div class="navrow"><button onclick="finishStage1()">Submit Section 2</button></div>
 `);
 const SEC_STAGE1 = sidx; sidx++;
+function beginStage1(){ startTimer(20*60, null, ()=>{ finishStage1(true); }); }
 window.finishStage1 = function(auto){
   stopTimer();
   const {result} = collectMCQ(STAGE1_QUESTIONS);
@@ -881,25 +883,6 @@ window.finishStage1 = function(auto){
   answers.stage1 = { responses: result, autoSubmitted: !!auto, confidenceBonusTotal: Math.round(confidenceBonus*100)/100 };
   goTo(SEC_STAGE1+1);
 };
-
-  function computeEarnings(){
-  const FIXED_FEE = 100;
-  let stage1Correct = 0;
-  Object.values(answers.stage1.responses || {}).forEach(r=>{ if(r && r.chosen === r.correct) stage1Correct++; });
-  const stage1Pay = stage1Correct * 15;
-  const stage1ConfidenceBonus = (answers.stage1 && answers.stage1.confidenceBonusTotal) || 0;
-  const round1Correct = (answers.taskC.round1 && answers.taskC.round1.correctCount) || 0;
-  const round1Pay = round1Correct * 5;
-  const total = FIXED_FEE + stage1Pay + stage1ConfidenceBonus + round1Pay;
-  answers.earnings = {
-    fixedFee: FIXED_FEE,
-    stage1: { correctCount: stage1Correct, pay: stage1Pay, confidenceBonus: stage1ConfidenceBonus },
-    taskCRound1: { correctCount: round1Correct, pay: round1Pay },
-    total: total,
-    note: 'Total shown to participant includes only the fixed fee, Stage 1 Ability Assessment (including confidence bonus), and Task C Round 1. Other task/bonus payouts (Task A, Task B, Task C Round 2, Stage 2, confidence-rank bonus, ranking bonus) are determined by the experimenter after the full session.'
-  };
-  return answers.earnings;
-}
 
 // ---------- SECTION 3: DECISION TASKS ----------
 // Task A: Risk Preferences
@@ -1267,15 +1250,16 @@ function computeEarnings(){
   let stage1Correct = 0;
   Object.values(answers.stage1.responses || {}).forEach(r=>{ if(r && r.chosen === r.correct) stage1Correct++; });
   const stage1Pay = stage1Correct * 15;
+  const stage1ConfidenceBonus = (answers.stage1 && answers.stage1.confidenceBonusTotal) || 0;
   const round1Correct = (answers.taskC.round1 && answers.taskC.round1.correctCount) || 0;
   const round1Pay = round1Correct * 5;
-  const total = FIXED_FEE + stage1Pay + round1Pay;
+  const total = FIXED_FEE + stage1Pay + stage1ConfidenceBonus + round1Pay;
   answers.earnings = {
     fixedFee: FIXED_FEE,
-    stage1: { correctCount: stage1Correct, pay: stage1Pay },
+    stage1: { correctCount: stage1Correct, pay: stage1Pay, confidenceBonus: stage1ConfidenceBonus },
     taskCRound1: { correctCount: round1Correct, pay: round1Pay },
     total: total,
-    note: 'Total shown to participant includes only the fixed fee, Stage 1 Ability Assessment, and Task C Round 1. Other task/bonus payouts (Task A, Task B, Task C Round 2, Stage 2, confidence bonus, ranking bonus) are determined by the experimenter after the full session.'
+    note: 'Total shown to participant includes only the fixed fee, Stage 1 Ability Assessment (including confidence bonus), and Task C Round 1. Other task/bonus payouts (Task A, Task B, Task C Round 2, Stage 2, confidence-rank bonus, ranking bonus) are determined by the experimenter after the full session.'
   };
   return answers.earnings;
 }
