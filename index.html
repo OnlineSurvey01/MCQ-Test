@@ -195,6 +195,10 @@ answers.terminatedDueToTabSwitch = false;
 let lastAwayEventAt = 0;
 function handleTabHidden(){
   if(surveyLocked) return;
+  // Once the participant has reached the final "End of Survey" slide (their
+  // answers are already submitted and completedAt is set), tab/window
+  // switches no longer matter for data integrity, so stop guarding.
+  if(answers.completedAt) return;
   const now = Date.now();
   // A real tab switch fires both 'visibilitychange' and window 'blur' at
   // once; debounce so that single action isn't counted as two violations.
@@ -839,7 +843,7 @@ mainFlowBuilt = true;
 
 // ---------- SECTION 2: STAGE 1 ABILITY ASSESSMENT ----------
 addSection(sidx, `
-  <h1 class="sec-title">Section 2 &middot; Stage 1 Ability Assessment</h1>
+  <h1 class="sec-title">Section 2 &middot; Stage 1 Assessment</h1>
   <div class="instructions">
     This section contains 10 multiple-choice questions spanning three areas: Quantitative Reasoning, Data Interpretation and Logical Reasoning, and Verbal Ability. For each question, select the single best answer by choosing any one of the four options A, B, C, or D.
     <br><b>Payment rule:</b> You earn Rs. 15 for each correct answer. Incorrect answers and skipped questions earn Rs. 0. Since there is no penalty for incorrect answers, you should attempt every question.
@@ -902,7 +906,7 @@ addSection(sidx, `
     This section contains three decision tasks. At the end of the session, one decision from Task A and one decision from Task B will each be randomly selected and paid based on your choice. Task C will be paid based on your actual performance. Please treat every decision as if it is the one that will count for payment.
   </div>
   <h2 class="part-title">Task A</h2>
-  <div class="instructions">Below are 10 pairs of options. For each row, choose either Option A (the safer option) or Option B (the riskier option). One row will be randomly selected for payment.</div>
+  <div class="instructions">Below are 10 pairs of options. For each row, choose either Option A or Option B. One row will be randomly selected for payment.</div>
   <table class="choicetable">
     <thead><tr><th style="width:56px;">Row</th><th>Option A </th><th>Option B </th></tr></thead>
     <tbody>
@@ -927,8 +931,28 @@ window.finishTaskA = function(){
     resp['row'+i] = val==='0' ? 'A' : (val==='1' ? 'B' : null);
   });
   if(!complete){ document.getElementById('taskAFlag').style.display='block'; return; }
+  // Step 1: randomly select which of the 10 rows will be played out for payment.
   const chosenRow = Math.floor(Math.random()*10);
-  answers.taskA = { responses: resp, randomlySelectedRow: chosenRow };
+  const chosenOption = resp['row'+chosenRow]; // 'A' or 'B'
+  const p = taskAProbs[chosenRow]; // probability (%) attached to the first-listed amount in that row
+  // Option A pays Rs 30 with probability p%, else Rs 25. Option B pays Rs 55 with probability p%, else Rs 1.
+  const highAmt = chosenOption === 'A' ? 30 : 55;
+  const lowAmt = chosenOption === 'A' ? 25 : 1;
+  // Step 2: play out the lottery implied by the chosen row/option to determine the actual payout.
+  const draw = Math.random()*100; // uniform draw on [0,100)
+  const wonHigh = draw < p;
+  const payoutAmount = wonHigh ? highAmt : lowAmt;
+  answers.taskA = {
+    responses: resp,
+    randomlySelectedRow: chosenRow,
+    chosenOption: chosenOption,
+    probabilityOfHighAmountPct: p,
+    highAmount: highAmt,
+    lowAmount: lowAmt,
+    randomDraw: Math.round(draw*100)/100,
+    payoutOutcome: wonHigh ? 'high' : 'low',
+    payoutAmount: payoutAmount
+  };
   goTo(SEC_TASKA+1);
 };
 
@@ -970,8 +994,31 @@ window.finishTaskB = function(){
     resp['row'+i] = val==='0'?'Accept':(val==='1'?'Reject':null);
   });
   if(!complete){ document.getElementById('taskBFlag').style.display='block'; return; }
+  // Step 1: randomly select which of the 6 rows will be played out for payment.
   const chosenRow = Math.floor(Math.random()*6);
-  answers.taskB = { responses: resp, randomlySelectedRow: chosenRow };
+  const chosenDecision = resp['row'+chosenRow]; // 'Accept' or 'Reject'
+  const lossAmt = taskBLosses[chosenRow];
+  let randomDraw = null, payoutOutcome, payoutAmount;
+  if(chosenDecision === 'Accept'){
+    // Step 2: play out the 50/50 lottery only if the participant accepted this row.
+    randomDraw = Math.random()*100; // uniform draw on [0,100)
+    const won = randomDraw < 50;
+    payoutOutcome = won ? 'win' : 'lose';
+    payoutAmount = won ? 60 : -lossAmt;
+  } else {
+    // Rejected rows are not gambled on: the outcome is simply Rs 0.
+    payoutOutcome = 'rejected';
+    payoutAmount = 0;
+  }
+  answers.taskB = {
+    responses: resp,
+    randomlySelectedRow: chosenRow,
+    chosenDecision: chosenDecision,
+    lossAmountForRow: lossAmt,
+    randomDraw: randomDraw!==null ? Math.round(randomDraw*100)/100 : null,
+    payoutOutcome: payoutOutcome,
+    payoutAmount: payoutAmount
+  };
   goTo(SEC_TASKB+1);
   beginRound1();
 };
@@ -1233,7 +1280,8 @@ window.finishPostSurvey = function(){
   answers.postSurvey = Object.assign({}, postSurveyVals);
   answers.completedAt = new Date().toISOString();
   computeEarnings();
-  document.getElementById('earningsTotal').textContent = 'Rs. ' + answers.earnings.total;
+  document.getElementById('earningsTotal').textContent = fmtRs(answers.earnings.total);
+  document.getElementById('earningsBreakdown').innerHTML = renderEarningsBreakdown(answers.earnings);
   goTo(SEC_POSTSURVEY+1);
 };
 
@@ -1245,8 +1293,34 @@ addSection(sidx, `
     <div style="font-size:14px;color:#5a5f52;letter-spacing:.03em;text-transform:uppercase;">Your Total Earnings</div>
     <div id="earningsTotal" style="font-family:var(--serif);font-size:44px;font-weight:700;color:var(--accent);margin-top:8px;">Rs. 0</div>
   </div>
+  <h2 class="part-title">Breakdown of Your Earnings</h2>
+  <div class="card" id="earningsBreakdown"></div>
 `);
 const SEC_FINAL = sidx; sidx++;
+
+function fmtRs(amount){
+  return amount < 0 ? ('-Rs. ' + Math.abs(amount)) : ('Rs. ' + amount);
+}
+function renderEarningsBreakdown(earnings){
+  let rows = earnings.breakdown.map(item => `
+    <div style="padding:12px 0;border-top:1px solid var(--rule);">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;">
+        <div style="font-weight:600;font-size:14.5px;">${item.section}</div>
+        <div style="font-family:var(--mono);font-weight:700;font-size:15px;color:${item.amount<0?'var(--warn)':'var(--accent)'};white-space:nowrap;">${fmtRs(item.amount)}</div>
+      </div>
+      <div style="font-size:13px;color:#5a5f52;margin-top:3px;">${item.calc}</div>
+    </div>
+  `).join('');
+  rows += `
+    <div style="padding:14px 0 2px;border-top:2px solid var(--ink);display:flex;justify-content:space-between;align-items:baseline;">
+      <div style="font-weight:700;font-size:15.5px;">Total</div>
+      <div style="font-family:var(--mono);font-weight:700;font-size:17px;">${fmtRs(earnings.total)}</div>
+    </div>`;
+  if(earnings.note){
+    rows += `<div class="footnote" style="margin-top:10px;">${earnings.note}</div>`;
+  }
+  return rows;
+}
 
 function computeEarnings(){
   const FIXED_FEE = 100;
@@ -1256,13 +1330,100 @@ function computeEarnings(){
   const stage1ConfidenceBonus = (answers.stage1 && answers.stage1.confidenceBonusTotal) || 0;
   const round1Correct = (answers.taskC.round1 && answers.taskC.round1.correctCount) || 0;
   const round1Pay = round1Correct * 5;
-  const total = FIXED_FEE + stage1Pay + stage1ConfidenceBonus + round1Pay;
+
+  const breakdown = [];
+  breakdown.push({
+    section: 'Participation Fee',
+    calc: 'Fixed fee paid to every participant.',
+    amount: FIXED_FEE
+  });
+  breakdown.push({
+    section: 'Section 2 · Stage 1 Assessment',
+    calc: `${stage1Correct} correct answer(s) × Rs. 15 = Rs. ${stage1Pay}`,
+    amount: stage1Pay
+  });
+  breakdown.push({
+    section: 'Section 2 · Bonus',
+    calc: `Bonus earned based on the confidence level you selected after each Section 2 answer.`,
+    amount: stage1ConfidenceBonus
+  });
+
+  let taskAPay = 0;
+  if(answers.taskA && answers.taskA.payoutAmount !== undefined && answers.taskA.payoutAmount !== null){
+    const ta = answers.taskA;
+    const row = ta.randomlySelectedRow;
+    const p = ta.probabilityOfHighAmountPct;
+    taskAPay = ta.payoutAmount;
+    breakdown.push({
+      section: 'Task A',
+      calc: `Row ${row+1} of 10 was randomly selected to count for payment. You had chosen Option ${ta.chosenOption} for that row, i.e. a ${p}% chance of Rs. ${ta.highAmount} and a ${100-p}% chance of Rs. ${ta.lowAmount}. The system then randomly played out this lottery (random draw: ${ta.randomDraw} out of 100, needed to be below ${p} to win Rs. ${ta.highAmount}) and the outcome was Rs. ${ta.payoutAmount}.`,
+      amount: taskAPay
+    });
+  }
+
+  let taskBPay = 0;
+  if(answers.taskB && answers.taskB.payoutAmount !== undefined && answers.taskB.payoutAmount !== null){
+    const tb = answers.taskB;
+    const row = tb.randomlySelectedRow;
+    taskBPay = tb.payoutAmount;
+    let calcText;
+    if(tb.chosenDecision === 'Accept'){
+      calcText = `Row ${row+1} of 6 was randomly selected to count for payment. You had chosen to Accept that lottery, i.e. a 50% chance to win Rs. 60 and a 50% chance to lose Rs. ${tb.lossAmountForRow}. The system then randomly played out this lottery (random draw: ${tb.randomDraw} out of 100, needed to be below 50 to win) and the outcome was ${tb.payoutOutcome === 'win' ? ('a win of Rs. ' + tb.payoutAmount) : ('a loss of Rs. ' + Math.abs(tb.payoutAmount))}.`;
+    } else {
+      calcText = `Row ${row+1} of 6 was randomly selected to count for payment. You had chosen to Reject that lottery (50% chance to win Rs. 60, 50% chance to lose Rs. ${tb.lossAmountForRow}), so no lottery was played and you neither gained nor lost any amount.`;
+    }
+    breakdown.push({
+      section: 'Task B',
+      calc: calcText,
+      amount: taskBPay
+    });
+  }
+
+  const round1PayItem = round1Pay;
+  breakdown.push({
+    section: 'Task C · Round 1',
+    calc: `${round1Correct} correct answer(s) × Rs. 5 = Rs. ${round1Pay}`,
+    amount: round1PayItem
+  });
+
+  // Round 2 only has a fixed, computable payout if the participant chose the
+  // Piece-Rate scheme (Rs. 5/correct answer). The Tournament scheme's payout
+  // depends on another participant's score from a previous session, which
+  // this page has no way to know, so it stays with the experimenter.
+  let round2Pay = 0;
+  let round2Included = false;
+  const round2Choice = answers.taskC && answers.taskC.round2Choice;
+  if(round2Choice === 'Piece-Rate' && answers.taskC.round2){
+    const round2Correct = answers.taskC.round2.correctCount || 0;
+    round2Pay = round2Correct * 5;
+    round2Included = true;
+    breakdown.push({
+      section: 'Task C · Round 2 (Piece-Rate)',
+      calc: `You chose the Piece-Rate scheme for Round 2. ${round2Correct} correct answer(s) × Rs. 5 = Rs. ${round2Pay}`,
+      amount: round2Pay
+    });
+  }
+
+  const total = FIXED_FEE + stage1Pay + stage1ConfidenceBonus + taskAPay + taskBPay + round1Pay + round2Pay;
+
+  const includedList = ['the fixed fee', 'Section 2 Stage 1 Assessment (including bonus)', 'Task A', 'Task B', 'Task C Round 1'];
+  const excludedList = ['Stage 2', 'confidence-rank bonus', 'ranking bonus'];
+  if(round2Included){
+    includedList.push('Task C Round 2 (Piece-Rate)');
+  } else {
+    excludedList.unshift(round2Choice === 'Tournament' ? 'Task C Round 2 (Tournament)' : 'Task C Round 2');
+  }
+
   answers.earnings = {
     fixedFee: FIXED_FEE,
     stage1: { correctCount: stage1Correct, pay: stage1Pay, confidenceBonus: stage1ConfidenceBonus },
+    taskA: { pay: taskAPay },
+    taskB: { pay: taskBPay },
     taskCRound1: { correctCount: round1Correct, pay: round1Pay },
+    taskCRound2: { included: round2Included, choice: round2Choice || null, pay: round2Pay },
+    breakdown: breakdown,
     total: total,
-    note: 'Total shown to participant includes only the fixed fee, Stage 1 Ability Assessment (including confidence bonus), and Task C Round 1. Other task/bonus payouts (Task A, Task B, Task C Round 2, Stage 2, confidence-rank bonus, ranking bonus) are determined by the experimenter after the full session.'
+    note: `This total includes ${includedList.join(', ')}. Other task/bonus payouts (${excludedList.join(', ')}) are determined by the experimenter after the full session.`
   };
   return answers.earnings;
 }
