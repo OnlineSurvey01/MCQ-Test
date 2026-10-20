@@ -287,8 +287,7 @@ function lockSurveyForTabSwitch(){
    Google Sheet, in addition to the local autosave. Leave it blank
    ('') to disable this and rely on local storage only.
 ===================================================================== */
-const GOOGLE_SHEET_WEBAPP_URL = 'https://onlinesurvey01.github.io/MCQ-Test/'; // <-- paste your deployed Web App URL here
-
+const GOOGLE_SHEET_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbzSAbiIxGTi7Bk_y_Slsz5okFHQArBWfTrkaZZQinr7psGxU22DFEVWUfZ-DwO9vsUW/exec';
 function syncToGoogleSheet(){
   if(!GOOGLE_SHEET_WEBAPP_URL || !currentParticipantEmail) return;
   try{
@@ -1443,30 +1442,7 @@ if(jumpToIndex !== undefined && jumpToIndex !== null){
   beginStage1();
 }
 }
-<form id="survey">
-  <input name="participant_id">
-  <input name="age" type="number">
-  <!-- ... your questions, each with a name="" matching a sheet header ... -->
-  <button type="submit">Submit</button>
-</form>
 
-<script>
-  const SCRIPT_URL = 'https://script.google.com/a/macros/mdi.ac.in/s/AKfycbzSAbiIxGTi7Bk_y_Slsz5okFHQArBWfTrkaZZQinr7psGxU22DFEVWUfZ-DwO9vsUW/exec';
-  const form = document.getElementById('survey');
-
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const btn = form.querySelector('button');
-    btn.disabled = true;  // stops double submissions
-    try {
-      await fetch(SCRIPT_URL, { method: 'POST', body: new FormData(form) });
-      form.innerHTML = '<p>Thank you! Your response has been recorded.</p>';
-    } catch (err) {
-      alert('Submission failed — please try again.');
-      btn.disabled = false;
-    }
-  });
-</script>
 /* =====================================================================
    INIT (Instructions + Participant Details + Demographics + Background
    are built eagerly above; the rest is built lazily once we know the
