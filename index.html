@@ -104,42 +104,41 @@
   table.choicetable .opts label{display:block; margin:0; padding:8px 6px; text-align:center;}
   table.choicetable .opts label span{margin-left:4px;}
   table.choicetable tr:nth-child(even) td{background:#fbfaf6;}
-    /* ===== THEME OVERRIDES: white background, light grey headings ===== */
+      /* ===== THEME OVERRIDES: light green background, dark brown headings ===== */
   :root{
-    --paper:#ffffff;          /* page background */
-    --heading-grey:#eeeeee;   /* light grey for headings */
-    --heading-text:#333333;   /* dark text on the grey */
+    --paper:#e8f5e9;          /* light green page background */
+    --heading-brown:#5d4037;  /* dark brown for section headings */
+    --heading-grey:#eeeeee;   /* light grey for table column headings */
+    --heading-text:#333333;
   }
-  body{ background:#ffffff; }
+  html, body{ background:#e8f5e9 !important; }
 
   /* Section names (e.g. "Section 2 · Stage 1 Assessment") */
   h1.sec-title{
-    background:var(--heading-grey);
-    color:var(--heading-text);
-    padding:10px 14px;
-    border-radius:3px;
+    color:var(--heading-brown) !important;
+    background:transparent;
+    padding:0;
   }
 
   /* Part names (e.g. "Part A: Quantitative Reasoning") */
   h2.part-title{
-    background:var(--heading-grey);
-    color:var(--heading-text);
-    padding:7px 12px;
-    border-radius:3px;
+    color:var(--heading-brown) !important;
+    background:transparent;
+    padding:0;
   }
 
-  /* Column headings in all tables (Task A, Task B, data tables, bonus table) */
+  /* Column headings in all tables stay light grey */
   table.datatable th,
   table.choicetable th{
     background:var(--heading-grey);
     color:var(--heading-text);
   }
 
-  /* Keep table rows plain white instead of the cream stripe */
+  /* Plain white table rows */
   table.choicetable tr:nth-child(even) td{ background:#ffffff; }
 
-  /* Top header bar */
-  header.top{ border-bottom-color:#cccccc; }
+  /* Top header bar line */
+  header.top{ border-bottom-color:#5d4037; }
 </style>
 </head>
 <body>
