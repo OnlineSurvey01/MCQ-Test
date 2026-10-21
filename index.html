@@ -104,6 +104,42 @@
   table.choicetable .opts label{display:block; margin:0; padding:8px 6px; text-align:center;}
   table.choicetable .opts label span{margin-left:4px;}
   table.choicetable tr:nth-child(even) td{background:#fbfaf6;}
+    /* ===== THEME OVERRIDES: white background, light grey headings ===== */
+  :root{
+    --paper:#ffffff;          /* page background */
+    --heading-grey:#eeeeee;   /* light grey for headings */
+    --heading-text:#333333;   /* dark text on the grey */
+  }
+  body{ background:#ffffff; }
+
+  /* Section names (e.g. "Section 2 · Stage 1 Assessment") */
+  h1.sec-title{
+    background:var(--heading-grey);
+    color:var(--heading-text);
+    padding:10px 14px;
+    border-radius:3px;
+  }
+
+  /* Part names (e.g. "Part A: Quantitative Reasoning") */
+  h2.part-title{
+    background:var(--heading-grey);
+    color:var(--heading-text);
+    padding:7px 12px;
+    border-radius:3px;
+  }
+
+  /* Column headings in all tables (Task A, Task B, data tables, bonus table) */
+  table.datatable th,
+  table.choicetable th{
+    background:var(--heading-grey);
+    color:var(--heading-text);
+  }
+
+  /* Keep table rows plain white instead of the cream stripe */
+  table.choicetable tr:nth-child(even) td{ background:#ffffff; }
+
+  /* Top header bar */
+  header.top{ border-bottom-color:#cccccc; }
 </style>
 </head>
 <body>
