@@ -1055,7 +1055,7 @@ window.taskAChoice = function(rowIndex, idx){
 addSection(sidx, `
   <h1 class="sec-title">Section 3 &middot; Decision Tasks</h1>
   <div class="instructions">
-    This section contains three decision tasks. At the end of the session, one decision from Task A and one decision from Task B will each be randomly selected and paid based on your choice. Task C will be paid based on your actual performance. Please treat every decision as if it is the one that will count for payment.
+    This section contains two decision tasks. At the end of the session, one decision from Task A and one decision from Task B will each be randomly selected and paid based on your choice. Please treat every decision as if it is the one that will count for payment.
   </div>
   <h2 class="part-title">Task A</h2>
   <div class="instructions">Below are 10 pairs of options. For each row, choose either Option A or Option B. One row will be randomly selected for payment.</div>
@@ -1134,7 +1134,7 @@ addSection(sidx, `
     </tbody>
   </table>
   <div class="flag" id="taskBFlag" style="display:none;">Please answer every row before continuing.</div>
-  <div class="navrow"><button onclick="finishTaskB()">Continue to Task C</button></div>
+  <div class="navrow"><button onclick="finishTaskB()">Continue</button></div>
 `);
 const SEC_TASKB = sidx; sidx++;
 window.finishTaskB = function(){
@@ -1172,82 +1172,6 @@ window.finishTaskB = function(){
     payoutAmount: payoutAmount
   };
   goTo(SEC_TASKB+1);
-  beginRound1();
-};
-
-// Task C: Competitive Orientation (fixed addition problems, per the paper instrument)
-const round1Nums = [[23,47,31,58,12],[64,18,37,55,29],[41,76,22,39,84],[55,33,17,68,44],[72,28,45,11,63],[36,52,89,14,27],[19,83,46,35,71],[57,24,88,43,16],[92,31,48,67,25],[38,62,73,19,54],[81,27,34,56,42],[14,79,53,28,66]];
-const round2Nums = [[44,26,71,38,53],[87,13,59,32,46],[21,65,94,47,18],[73,39,28,82,15],[56,41,67,23,88],[34,79,12,55,43],[91,25,68,37,74],[48,83,16,62,31],[27,54,89,43,76],[66,33,51,84,19],[42,77,28,61,35],[93,17,44,58,82]];
-function renderSumRows(rows, prefix){
-  return rows.map((nums,i)=>`<div class="rowline"><label>${nums.join(' + ')} =</label><input type="number" id="${prefix}_${i}" style="width:110px;"></div>`).join('');
-}
-addSection(sidx, `
-  <h1 class="sec-title">Task C &mdash; Round 1</h1>
-  <div class="instructions">You have <b>1 minute</b> to add and type in as many sets of five two-digit numbers as possible. Each correct sum earns Rs. 5 under the piece-rate scheme.</div>
-  <div class="card">${renderSumRows(round1Nums,'r1')}</div>
-  <div class="navrow"><button onclick="finishRound1()">Submit Round 1</button></div>
-`);
-const SEC_ROUND1 = sidx; sidx++;
-function beginRound1(){ startTimer(1*60, null, ()=>finishRound1(true)); }
-window.finishRound1 = function(auto){
-  stopTimer();
-  const resp = round1Nums.map((nums,i)=>{
-    const v = document.getElementById('r1_'+i).value;
-    const correctSum = nums.reduce((a,b)=>a+b,0);
-    return { nums, entered: v, correctSum, isCorrect: Number(v)===correctSum };
-  });
-  answers.taskC.round1 = { responses: resp, autoSubmitted: !!auto, correctCount: resp.filter(r=>r.isCorrect).length };
-  goTo(SEC_ROUND1+1);
-};
-
-addSection(sidx, `
-  <h1 class="sec-title">Task C: Choose Your Round 2 Payment Scheme</h1>
-  <div class="instructions">
-    You will now complete another 1-minute round of the same addition task. Before you begin, choose how your Round 2 performance will be paid. Choose one option only.
-    <ul>
-      <li><b>Option A (Piece-Rate):</b> Rs. 5 for each correct answer in Round 2, regardless of how others perform.</li>
-      <li><b>Option B (Tournament):</b> Rs. 20 for each correct answer in Round 2 only if your total score in Round 2 is higher than another randomly selected participant from a previous round of this study. If you do not have the higher score, you earn Rs. 0 for Round 2.</li>
-    </ul>
-  </div>
-  <div class="card" data-qid="taskCchoice">
-    <div class="opts">
-      <label><input type="radio" name="taskCchoice" onchange="selectOpt('taskCchoice',0)"><span>Option A (Piece-Rate)</span></label>
-      <label><input type="radio" name="taskCchoice" onchange="selectOpt('taskCchoice',1)"><span>Option B (Tournament)</span></label>
-    </div>
-  </div>
-  <div class="flag" id="choiceFlag" style="display:none;">Please select a payment scheme before continuing.</div>
-  <div class="navrow"><button onclick="confirmChoiceAndStartR2()">Begin Round 2</button></div>
-`);
-const SEC_CHOICE = sidx; sidx++;
-window.confirmChoiceAndStartR2 = function(){
-  const card = document.querySelector('[data-qid="taskCchoice"]');
-  const val = card.dataset.answered;
-  if(val===undefined||val===''){ document.getElementById('choiceFlag').style.display='block'; return; }
-  answers.taskC.round2Choice = val==='0'?'Piece-Rate':'Tournament';
-  goTo(SEC_CHOICE+1);
-  beginRound2();
-};
-
-addSection(sidx, `
-  <h1 class="sec-title">Task C &mdash; Round 2</h1>
-  <div class="instructions">You have <b>1 minute</b> to complete this round. Payment scheme selected: <span id="chosenSchemeLabel"></span></div>
-  <div class="card">${renderSumRows(round2Nums,'r2')}</div>
-  <div class="navrow"><button onclick="finishRound2()">Submit Round 2</button></div>
-`);
-const SEC_ROUND2 = sidx; sidx++;
-function beginRound2(){
-  document.getElementById('chosenSchemeLabel').textContent = answers.taskC.round2Choice;
-  startTimer(1*60, null, ()=>finishRound2(true));
-}
-window.finishRound2 = function(auto){
-  stopTimer();
-  const resp = round2Nums.map((nums,i)=>{
-    const v = document.getElementById('r2_'+i).value;
-    const correctSum = nums.reduce((a,b)=>a+b,0);
-    return { nums, entered: v, correctSum, isCorrect: Number(v)===correctSum };
-  });
-  answers.taskC.round2 = { responses: resp, autoSubmitted: !!auto, correctCount: resp.filter(r=>r.isCorrect).length };
-  goTo(SEC_ROUND2+1);
 };
 
 // ---------- SECTION 4: SCORING RULE REVEAL ----------
@@ -1480,8 +1404,6 @@ function computeEarnings(){
   Object.values(answers.stage1.responses || {}).forEach(r=>{ if(r && r.chosen === r.correct) stage1Correct++; });
   const stage1Pay = stage1Correct * 15;
   const stage1ConfidenceBonus = (answers.stage1 && answers.stage1.confidenceBonusTotal) || 0;
-  const round1Correct = (answers.taskC.round1 && answers.taskC.round1.correctCount) || 0;
-  const round1Pay = round1Correct * 5;
 
   const breakdown = [];
   breakdown.push({
@@ -1531,51 +1453,19 @@ function computeEarnings(){
     });
   }
 
-  const round1PayItem = round1Pay;
-  breakdown.push({
-    section: 'Task C · Round 1',
-    calc: `${round1Correct} correct answer(s) × Rs. 5 = Rs. ${round1Pay}`,
-    amount: round1PayItem
-  });
+  const total = FIXED_FEE + stage1Pay + stage1ConfidenceBonus + taskAPay + taskBPay;
 
-  // Round 2 only has a fixed, computable payout if the participant chose the
-  // Piece-Rate scheme (Rs. 5/correct answer). The Tournament scheme's payout
-  // depends on another participant's score from a previous session, which
-  // this page has no way to know, so it stays with the experimenter.
-  let round2Pay = 0;
-  let round2Included = false;
-  const round2Choice = answers.taskC && answers.taskC.round2Choice;
-  if(round2Choice === 'Piece-Rate' && answers.taskC.round2){
-    const round2Correct = answers.taskC.round2.correctCount || 0;
-    round2Pay = round2Correct * 5;
-    round2Included = true;
-    breakdown.push({
-      section: 'Task C · Round 2 (Piece-Rate)',
-      calc: `You chose the Piece-Rate scheme for Round 2. ${round2Correct} correct answer(s) × Rs. 5 = Rs. ${round2Pay}`,
-      amount: round2Pay
-    });
-  }
-
-  const total = FIXED_FEE + stage1Pay + stage1ConfidenceBonus + taskAPay + taskBPay + round1Pay + round2Pay;
-
-  const includedList = ['the fixed fee', 'Section 2 Stage 1 Assessment (including bonus)', 'Task A', 'Task B', 'Task C Round 1'];
-  const excludedList = ['Stage 2', 'confidence-rank bonus', 'ranking bonus'];
-  if(round2Included){
-    includedList.push('Task C Round 2 (Piece-Rate)');
-  } else {
-    excludedList.unshift(round2Choice === 'Tournament' ? 'Task C Round 2 (Tournament)' : 'Task C Round 2');
-  }
+  const includedList = ['the fixed fee', 'Section 2 Stage 1 Assessment (including confidence bonus)', 'Task A', 'Task B'];
+  const excludedList = ['Stage 2 assessment bonus'];
 
   answers.earnings = {
     fixedFee: FIXED_FEE,
     stage1: { correctCount: stage1Correct, pay: stage1Pay, confidenceBonus: stage1ConfidenceBonus },
     taskA: { pay: taskAPay },
     taskB: { pay: taskBPay },
-    taskCRound1: { correctCount: round1Correct, pay: round1Pay },
-    taskCRound2: { included: round2Included, choice: round2Choice || null, pay: round2Pay },
     breakdown: breakdown,
     total: total,
-    note: `This total includes ${includedList.join(', ')}. Other task/bonus payouts (${excludedList.join(', ')}) are determined by the experimenter after the full session.`
+    note: `This total includes ${includedList.join(', ')}. Other bonuses (${excludedList.join(', ')}) are determined by the experimenter after the full session.`
   };
   return answers.earnings;
 }
@@ -1683,11 +1573,17 @@ window.calculatorCalculate = function () {
 window.updateCalculatorVisibility = function (section) {
   const calculator = document.getElementById('surveyCalculator');
   const toggle = document.getElementById('calculatorToggle');
-  if (!calculator || !toggle) return;
+  if (!calculator || !toggle || !section) return;
 
-  const title = section ? section.querySelector('h1.sec-title') : null;
-  const titleText = title ? title.textContent : '';
-  const allowed = /Stage 1.*Assessment|Stage 2.*Assessment/i.test(titleText);
+  const title = section.querySelector('.sec-title');
+  const titleText = title ? title.textContent.replace(/\s+/g, ' ').trim() : '';
+  // Stage 1: show on the actual assessment page.
+  const isStage1Assessment = /Stage 1 Assessment/i.test(titleText);
+  // Stage 2 has a separate scoring-rule introduction page with the same title.
+  // Only show the calculator on the subsequent page containing the actual questions.
+  const isStage2Assessment = /Stage 2 Assessment/i.test(titleText) &&
+    !!section.querySelector('[data-qid]');
+  const allowed = isStage1Assessment || isStage2Assessment;
 
   calculator.classList.remove('visible');
   calculatorExpression = '';
