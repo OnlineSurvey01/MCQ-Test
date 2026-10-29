@@ -4,106 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Study on Decision-Making and Performance Assessment</title>
-
-/* ===== ON-SCREEN CALCULATOR ===== */
-#surveyCalculator {
-  display: none;
-  position: fixed;
-  right: 20px;
-  bottom: 20px;
-  width: 270px;
-  z-index: 5000;
-  background: #ffffff;
-  border: 1px solid #b8c8b8;
-  border-radius: 8px;
-  box-shadow: 0 4px 18px rgba(0,0,0,0.20);
-  padding: 12px;
-  color: #1c2b2d;
-}
-
-#surveyCalculator.visible {
-  display: block;
-}
-
-#calculatorHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-  font-weight: bold;
-  color: #5d4037;
-}
-
-#calculatorHeader button {
-  padding: 3px 9px;
-  font-size: 17px;
-  line-height: 1.2;
-}
-
-#calculatorDisplay {
-  width: 100%;
-  height: 45px;
-  margin-bottom: 10px;
-  padding: 8px;
-  text-align: right;
-  font-family: "Courier New", monospace;
-  font-size: 22px;
-  background: #f7f5ef;
-  border: 1px solid #d8d3c4;
-  border-radius: 4px;
-}
-
-.calculator-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
-}
-
-.calculator-grid button {
-  padding: 11px 0;
-  min-width: 0;
-  border-radius: 4px;
-  font-size: 17px;
-}
-
-.calculator-grid button.calc-utility {
-  background: #eeeeee;
-  color: #333333;
-  border-color: #cccccc;
-}
-
-.calculator-grid button.calc-equals {
-  background: #5d4037;
-  border-color: #5d4037;
-}
-
-#calculatorToggle {
-  display: none;
-  position: fixed;
-  right: 20px;
-  bottom: 20px;
-  z-index: 5001;
-  padding: 12px 16px;
-  border-radius: 24px;
-  box-shadow: 0 3px 10px rgba(0,0,0,0.18);
-}
-
-#calculatorToggle.visible {
-  display: block;
-}
-
-@media (max-width: 480px) {
-  #surveyCalculator {
-    right: 10px;
-    bottom: 10px;
-    width: 250px;
-  }
-
-  #calculatorToggle {
-    right: 10px;
-    bottom: 10px;
-  }
-}
 <style>
   :root{
     --ink:#1c2b2d;
@@ -239,6 +139,105 @@
 
   /* Top header bar line */
   header.top{ border-bottom-color:#5d4037; }
+/* ===== ON-SCREEN CALCULATOR ===== */
+#surveyCalculator {
+  display: none;
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  width: 270px;
+  z-index: 5000;
+  background: #ffffff;
+  border: 1px solid #b8c8b8;
+  border-radius: 8px;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.20);
+  padding: 12px;
+  color: #1c2b2d;
+}
+
+#surveyCalculator.visible {
+  display: block;
+}
+
+#calculatorHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  font-weight: bold;
+  color: #5d4037;
+}
+
+#calculatorHeader button {
+  padding: 3px 9px;
+  font-size: 17px;
+  line-height: 1.2;
+}
+
+#calculatorDisplay {
+  width: 100%;
+  height: 45px;
+  margin-bottom: 10px;
+  padding: 8px;
+  text-align: right;
+  font-family: "Courier New", monospace;
+  font-size: 22px;
+  background: #f7f5ef;
+  border: 1px solid #d8d3c4;
+  border-radius: 4px;
+}
+
+.calculator-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.calculator-grid button {
+  padding: 11px 0;
+  min-width: 0;
+  border-radius: 4px;
+  font-size: 17px;
+}
+
+.calculator-grid button.calc-utility {
+  background: #eeeeee;
+  color: #333333;
+  border-color: #cccccc;
+}
+
+.calculator-grid button.calc-equals {
+  background: #5d4037;
+  border-color: #5d4037;
+}
+
+#calculatorToggle {
+  display: none;
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 5001;
+  padding: 12px 16px;
+  border-radius: 24px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.18);
+}
+
+#calculatorToggle.visible {
+  display: block;
+}
+
+@media (max-width: 480px) {
+  #surveyCalculator {
+    right: 10px;
+    bottom: 10px;
+    width: 250px;
+  }
+
+  #calculatorToggle {
+    right: 10px;
+    bottom: 10px;
+  }
+}
 </style>
 </head>
 <body>
