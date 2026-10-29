@@ -139,105 +139,85 @@
 
   /* Top header bar line */
   header.top{ border-bottom-color:#5d4037; }
-/* ===== ON-SCREEN CALCULATOR ===== */
-#surveyCalculator {
-  display: none;
-  position: fixed;
-  right: 20px;
-  bottom: 20px;
-  width: 270px;
-  z-index: 5000;
-  background: #ffffff;
-  border: 1px solid #b8c8b8;
-  border-radius: 8px;
-  box-shadow: 0 4px 18px rgba(0,0,0,0.20);
-  padding: 12px;
-  color: #1c2b2d;
-}
 
-#surveyCalculator.visible {
-  display: block;
-}
-
-#calculatorHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-  font-weight: bold;
-  color: #5d4037;
-}
-
-#calculatorHeader button {
-  padding: 3px 9px;
-  font-size: 17px;
-  line-height: 1.2;
-}
-
-#calculatorDisplay {
-  width: 100%;
-  height: 45px;
-  margin-bottom: 10px;
-  padding: 8px;
-  text-align: right;
-  font-family: "Courier New", monospace;
-  font-size: 22px;
-  background: #f7f5ef;
-  border: 1px solid #d8d3c4;
-  border-radius: 4px;
-}
-
-.calculator-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
-}
-
-.calculator-grid button {
-  padding: 11px 0;
-  min-width: 0;
-  border-radius: 4px;
-  font-size: 17px;
-}
-
-.calculator-grid button.calc-utility {
-  background: #eeeeee;
-  color: #333333;
-  border-color: #cccccc;
-}
-
-.calculator-grid button.calc-equals {
-  background: #5d4037;
-  border-color: #5d4037;
-}
-
-#calculatorToggle {
-  display: none;
-  position: fixed;
-  right: 20px;
-  bottom: 20px;
-  z-index: 5001;
-  padding: 12px 16px;
-  border-radius: 24px;
-  box-shadow: 0 3px 10px rgba(0,0,0,0.18);
-}
-
-#calculatorToggle.visible {
-  display: block;
-}
-
-@media (max-width: 480px) {
+  /* ===== ON-SCREEN CALCULATOR ===== */
   #surveyCalculator {
-    right: 10px;
-    bottom: 10px;
-    width: 250px;
+    display: none;
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    width: 270px;
+    max-width: calc(100vw - 20px);
+    z-index: 5000;
+    background: #ffffff;
+    border: 1px solid #b8c8b8;
+    border-radius: 8px;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.20);
+    padding: 12px;
+    color: #1c2b2d;
+  }
+  #surveyCalculator.visible { display: block; }
+  #calculatorHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    font-weight: bold;
+    color: #5d4037;
+  }
+  #calculatorHeader button {
+    padding: 3px 9px;
+    font-size: 17px;
+    line-height: 1.2;
+  }
+  #calculatorDisplay {
+    width: 100%;
+    height: 45px;
+    margin-bottom: 10px;
+    padding: 8px;
+    text-align: right;
+    font-family: "Courier New", monospace;
+    font-size: 22px;
+    background: #f7f5ef;
+    border: 1px solid #d8d3c4;
+    border-radius: 4px;
+  }
+  .calculator-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .calculator-grid button {
+    padding: 11px 0;
+    min-width: 0;
+    border-radius: 4px;
+    font-size: 17px;
+  }
+  .calculator-grid button.calc-utility {
+    background: #eeeeee;
+    color: #333333;
+    border-color: #cccccc;
+  }
+  .calculator-grid button.calc-equals {
+    background: #5d4037;
+    border-color: #5d4037;
+  }
+  #calculatorToggle {
+    display: none;
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    z-index: 5001;
+    padding: 12px 16px;
+    border-radius: 24px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.18);
+  }
+  #calculatorToggle.visible { display: block; }
+  @media (max-width: 480px) {
+    #surveyCalculator { right: 10px; bottom: 10px; width: 250px; }
+    #calculatorToggle { right: 10px; bottom: 10px; }
   }
 
-  #calculatorToggle {
-    right: 10px;
-    bottom: 10px;
-  }
-}
 </style>
 </head>
 <body>
@@ -248,62 +228,44 @@
   </header>
   <div class="progress-track"><div class="progress-fill" id="progFill"></div></div>
   <div id="sections"></div>
-  
-<!-- Floating calculator: available only during aptitude assessments -->
-<button id="calculatorToggle" class="visible"
-        type="button" onclick="toggleSurveyCalculator()">
-  Open Calculator
-</button>
 
-<div id="surveyCalculator" role="group"
-     aria-label="On-screen calculator">
-  <div id="calculatorHeader">
-    <span>Calculator</span>
-    <button type="button" class="secondary"
-            onclick="toggleSurveyCalculator()"
-            aria-label="Close calculator">×</button>
+  <!-- Calculator is enabled only on Stage 1 and Stage 2 assessment sections. -->
+  <button id="calculatorToggle" type="button"
+          onclick="toggleSurveyCalculator()">
+    Open Calculator
+  </button>
+  <div id="surveyCalculator" role="group" aria-label="On-screen calculator">
+    <div id="calculatorHeader">
+      <span>Calculator</span>
+      <button type="button" class="secondary"
+              onclick="toggleSurveyCalculator()"
+              aria-label="Close calculator">×</button>
+    </div>
+    <input id="calculatorDisplay" type="text" value="0" readonly
+           aria-label="Calculator display">
+    <div class="calculator-grid">
+      <button type="button" class="calc-utility" onclick="calculatorClear()">C</button>
+      <button type="button" class="calc-utility" onclick="calculatorBackspace()">⌫</button>
+      <button type="button" class="calc-utility" onclick="calculatorInput('(')">(</button>
+      <button type="button" class="calc-utility" onclick="calculatorInput(')')">)</button>
+      <button type="button" onclick="calculatorInput('7')">7</button>
+      <button type="button" onclick="calculatorInput('8')">8</button>
+      <button type="button" onclick="calculatorInput('9')">9</button>
+      <button type="button" class="calc-utility" onclick="calculatorInput('/')">÷</button>
+      <button type="button" onclick="calculatorInput('4')">4</button>
+      <button type="button" onclick="calculatorInput('5')">5</button>
+      <button type="button" onclick="calculatorInput('6')">6</button>
+      <button type="button" class="calc-utility" onclick="calculatorInput('*')">×</button>
+      <button type="button" onclick="calculatorInput('1')">1</button>
+      <button type="button" onclick="calculatorInput('2')">2</button>
+      <button type="button" onclick="calculatorInput('3')">3</button>
+      <button type="button" class="calc-utility" onclick="calculatorInput('-')">−</button>
+      <button type="button" onclick="calculatorInput('0')">0</button>
+      <button type="button" onclick="calculatorInput('.')">.</button>
+      <button type="button" class="calc-equals" onclick="calculatorCalculate()">=</button>
+      <button type="button" class="calc-utility" onclick="calculatorInput('+')">+</button>
+    </div>
   </div>
-
-  <input id="calculatorDisplay" type="text"
-         value="0" readonly aria-label="Calculator display">
-
-  <div class="calculator-grid">
-    <button type="button" class="calc-utility"
-            onclick="calculatorClear()">C</button>
-    <button type="button" class="calc-utility"
-            onclick="calculatorBackspace()">⌫</button>
-    <button type="button" class="calc-utility"
-            onclick="calculatorInput('(')">(</button>
-    <button type="button" class="calc-utility"
-            onclick="calculatorInput(')')">)</button>
-
-    <button type="button" onclick="calculatorInput('7')">7</button>
-    <button type="button" onclick="calculatorInput('8')">8</button>
-    <button type="button" onclick="calculatorInput('9')">9</button>
-    <button type="button" class="calc-utility"
-            onclick="calculatorInput('/')">÷</button>
-
-    <button type="button" onclick="calculatorInput('4')">4</button>
-    <button type="button" onclick="calculatorInput('5')">5</button>
-    <button type="button" onclick="calculatorInput('6')">6</button>
-    <button type="button" class="calc-utility"
-            onclick="calculatorInput('*')">×</button>
-
-    <button type="button" onclick="calculatorInput('1')">1</button>
-    <button type="button" onclick="calculatorInput('2')">2</button>
-    <button type="button" onclick="calculatorInput('3')">3</button>
-    <button type="button" class="calc-utility"
-            onclick="calculatorInput('-')">−</button>
-
-    <button type="button" onclick="calculatorInput('0')">0</button>
-    <button type="button" onclick="calculatorInput('.')">.</button>
-    <button type="button" class="calc-equals"
-            onclick="calculatorCalculate()">=</button>
-    <button type="button" class="calc-utility"
-            onclick="calculatorInput('+')">+</button>
-  </div>
-</div>
-
 </div>
 <div class="tab-overlay" id="tabWarningOverlay">
   <div class="box">
@@ -686,9 +648,7 @@ function goTo(idx){
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   const el = document.getElementById('sec_'+idx);
   el.classList.add('active');
-  // NEW: control calculator visibility by assessment section
-updateCalculatorVisibility(el);
-```
+  if (typeof updateCalculatorVisibility === 'function') updateCalculatorVisibility(el);
   window.scrollTo(0,0);
   setProgress(Math.round((idx/(flow.length-1))*100));
   saveProgressSnapshot();
@@ -1645,7 +1605,6 @@ flow.length = 16;
 goTo(0);
 
 /* ===== ON-SCREEN CALCULATOR LOGIC ===== */
-
 let calculatorExpression = '';
 let calculatorJustEvaluated = false;
 
@@ -1656,7 +1615,6 @@ function calculatorDisplayUpdate(value) {
 window.toggleSurveyCalculator = function () {
   const calculator = document.getElementById('surveyCalculator');
   const toggle = document.getElementById('calculatorToggle');
-
   if (calculator.classList.contains('visible')) {
     calculator.classList.remove('visible');
     toggle.textContent = 'Open Calculator';
@@ -1669,20 +1627,16 @@ window.toggleSurveyCalculator = function () {
 
 window.calculatorInput = function (value) {
   const operators = ['+', '-', '*', '/'];
-
   if (calculatorJustEvaluated) {
     if (operators.includes(value)) {
-      // Continue calculating from the displayed result.
-      calculatorExpression =
-        document.getElementById('calculatorDisplay').value;
+      calculatorExpression = document.getElementById('calculatorDisplay').value;
     } else {
       calculatorExpression = '';
     }
     calculatorJustEvaluated = false;
   }
-
   calculatorExpression += value;
-  calculatorDisplayUpdate(calculatorExpression);
+  calculatorDisplayUpdate(calculatorExpression || '0');
 };
 
 window.calculatorClear = function () {
@@ -1698,36 +1652,24 @@ window.calculatorBackspace = function () {
   } else {
     calculatorExpression = calculatorExpression.slice(0, -1);
   }
-
   calculatorDisplayUpdate(calculatorExpression || '0');
 };
 
 window.calculatorCalculate = function () {
   const expression = calculatorExpression.trim();
-
   if (!expression) return;
-
-  // Accept arithmetic characters only; no arbitrary JavaScript.
   if (!/^[0-9+\-*/().\s]+$/.test(expression)) {
     calculatorDisplayUpdate('Invalid expression');
     calculatorExpression = '';
     calculatorJustEvaluated = true;
     return;
   }
-
   try {
-    const result = Function(
-      '"use strict"; return (' + expression + ');'
-    )();
-
+    const result = Function('"use strict"; return (' + expression + ');')();
     if (typeof result !== 'number' || !Number.isFinite(result)) {
       throw new Error('Invalid calculation');
     }
-
-    const formatted = String(
-      Number(result.toPrecision(12))
-    );
-
+    const formatted = String(Number(result.toPrecision(12)));
     calculatorExpression = formatted;
     calculatorDisplayUpdate(formatted);
     calculatorJustEvaluated = true;
@@ -1738,24 +1680,19 @@ window.calculatorCalculate = function () {
   }
 };
 
-/* Show the calculator only in Stage 1 and Stage 2 assessments. */
 window.updateCalculatorVisibility = function (section) {
   const calculator = document.getElementById('surveyCalculator');
   const toggle = document.getElementById('calculatorToggle');
+  if (!calculator || !toggle) return;
 
-  if (!calculator || !toggle || !section) return;
-
-  const title = section.querySelector('h1.sec-title');
+  const title = section ? section.querySelector('h1.sec-title') : null;
   const titleText = title ? title.textContent : '';
-
-  const allowed =
-    /Stage 1 Assessment|Stage 2 Assessment/i.test(titleText);
+  const allowed = /Stage 1.*Assessment|Stage 2.*Assessment/i.test(titleText);
 
   calculator.classList.remove('visible');
   calculatorExpression = '';
   calculatorJustEvaluated = false;
   calculatorDisplayUpdate('0');
-
   toggle.style.display = allowed ? 'block' : 'none';
   toggle.classList.toggle('visible', allowed);
   toggle.textContent = 'Open Calculator';
