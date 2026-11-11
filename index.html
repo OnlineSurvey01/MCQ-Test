@@ -104,6 +104,29 @@
   table.choicetable .opts label{display:block; margin:0; padding:8px 6px; text-align:center;}
   table.choicetable .opts label span{margin-left:4px;}
   table.choicetable tr:nth-child(even) td{background:#fbfaf6;}
+  /* One-question-per-page paging inside Stage 1 / Stage 2 */
+  .qpage{display:none;}
+  .qpage.active{display:block;animation:fade .25s ease;}
+  .qcounter{font-family:var(--mono); font-size:13px; color:#5a5f52; margin:4px 0 0;}
+  .pagernav{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:24px;}
+  /* Question navigator (Stage 1 / Stage 2) */
+  .qnav{background:#fff; border:1px solid #d9d6cc; border-radius:6px; padding:12px; box-shadow:0 2px 10px rgba(0,0,0,.06); z-index:50;}
+  .qnav-title{font-weight:600; font-size:14px; margin-bottom:8px;}
+  .qnav-grid{display:grid; grid-template-columns:repeat(5, 1fr); gap:6px;}
+  .qnav-btn{min-width:0; width:100%; padding:7px 0; margin:0; font-size:14px; font-weight:600; border-radius:4px; border:2px solid transparent; color:#fff; cursor:pointer; box-shadow:none;}
+  .qnav-btn.un{background:#c53030;}
+  .qnav-btn.ans{background:#2b6cb0;}
+  .qnav-btn.skp{background:#8a8f87;}
+  .qnav-btn.cur{border-color:#1c2b2d; outline:2px solid #fff; outline-offset:-4px;}
+  .qnav-legend{font-size:12px; color:#5a5f52; margin-top:10px; line-height:1.7;}
+  .qnav-legend i{display:inline-block; width:11px; height:11px; border-radius:2px; vertical-align:-1px; margin-right:5px;}
+  @media (min-width:1150px){
+    .qnav{position:fixed; top:110px; left:calc(50% + 400px); width:190px;}
+  }
+  @media (max-width:1149px){
+    .qnav{position:sticky; top:0; margin:10px 0 14px;}
+    .qnav-grid{grid-template-columns:repeat(10, 1fr);}
+  }
       /* ===== THEME OVERRIDES: light green background, dark brown headings ===== */
   :root{
     --paper:#e8f5e9;          /* light green page background */
@@ -327,12 +350,12 @@
 ===================================================================== */
 const R = {
   pid: 'P' + Math.floor(Math.random()*900000+100000),
-  condition: [1,2][Math.floor(Math.random()*2)],
+  condition: [1,2,3][Math.floor(Math.random()*3)],
   startedAt: new Date().toISOString()
 };
 const answers = { meta: R, participant:{name:null,email:null}, demographics:{}, background:{},
                    stage1:{}, taskA:{}, taskB:{}, taskC:{}, comprehensionCheck:{},
-                   stage2:{}, confidence:{}, postSurvey:{}, resumeCount: 0 };
+                   stage2:{}, confidence:{}, confidenceStage2:{}, stage3:{}, gambleTask:{}, postSurvey:{}, resumeCount: 0 };
 
 /* =====================================================================
    TAB-SWITCH GUARD
@@ -561,32 +584,6 @@ const flow = [];
 let flowIndex = 0;
 const root = document.getElementById('sections');
 
-const CONFIDENCE_LEVELS = [
-  { label: 'Certain (100%)', value: 100, bonusCorrect: 10.00, bonusWrong: 0.00 },
-  { label: 'Fairly confident (75%)', value: 75, bonusCorrect: 9.50, bonusWrong: 4.50 },
-  { label: 'Somewhat confident (50%)', value: 50, bonusCorrect: 7.50, bonusWrong: 7.50 },
-  { label: 'Not confident, mostly guessing (25%)', value: 25, bonusCorrect: 4.50, bonusWrong: 9.50 }
-];
-
-function renderConfidenceCard(qid){
-  const cqid = qid + '_conf';
-  return `<div class="card" data-qid="${cqid}">
-    <div class="qtext">How confident are you that the answer you just selected is correct?</div>
-    <div class="opts">
-      ${CONFIDENCE_LEVELS.map((c,ci)=>`<label><input type="radio" name="${cqid}" value="${ci}" onchange="selectOpt('${cqid}',${ci})"><span>${c.label}</span></label>`).join('')}
-    </div>
-  </div>`;
-}
-
-function collectConfidence(qArray){
-  const result = {};
-  qArray.forEach(q=>{
-    const card = document.querySelector(`[data-qid="${q.id}_conf"]`);
-    const ans = card ? card.dataset.answered : undefined;
-    result[q.id] = (ans !== undefined && ans !== '') ? CONFIDENCE_LEVELS[Number(ans)].value : null;
-  });
-  return result;
-}
 
 function renderMCQBlock(qArray, opts){
   opts = opts || {};
@@ -604,12 +601,66 @@ function renderMCQBlock(qArray, opts){
       html += `<div class="skiprow"><label><input type="checkbox" id="skip_${q.id}" onchange="toggleSkip('${q.id}')"> Skip this question</label></div>`;
     }
     html += `</div>`;
-    if(opts.confidence){
-      html += renderConfidenceCard(q.id);
-    }
   });
   return html;
 }
+/* ---------- ONE QUESTION PER PAGE ----------
+   Renders each question on its own
+   page inside the same section. Only the visible page changes; the section,
+   timer, autosave and answer collection work exactly as before.
+   Set ALLOW_BACK_NAVIGATION = false to remove the "Previous" button. */
+const ALLOW_BACK_NAVIGATION = true;
+const stagePageIndex = {};
+function renderQNav(stageKey, qArray, withSkip){
+  return `<aside class="qnav" data-stage="${stageKey}">
+    <div class="qnav-title">Questions</div>
+    <div class="qnav-grid">${qArray.map((q,i)=>`<button type="button" class="qnav-btn un${i===0?' cur':''}" data-navqid="${q.id}" data-page="${i}" onclick="showStagePage('${stageKey}',${i})" title="Go to question ${i+1}">${i+1}</button>`).join('')}</div>
+    <div class="qnav-legend"><i style="background:#2b6cb0"></i>Answered<br><i style="background:#c53030"></i>Not attempted${withSkip?'<br><i style="background:#8a8f87"></i>Skipped':''}<br>Click a number to go to that question.</div>
+  </aside>`;
+}
+function updateQNav(){
+  document.querySelectorAll('.qnav').forEach(nav=>{
+    const stageKey = nav.dataset.stage;
+    const cur = stagePageIndex[stageKey] || 0;
+    nav.querySelectorAll('.qnav-btn').forEach(btn=>{
+      const card = document.querySelector(`.card[data-qid="${btn.dataset.navqid}"]`);
+      const answered = card && card.dataset.answered !== undefined && card.dataset.answered !== '';
+      const skipped = card && card.dataset.skipped === '1';
+      btn.classList.remove('ans','un','skp','cur');
+      btn.classList.add(answered ? 'ans' : (skipped ? 'skp' : 'un'));
+      if(Number(btn.dataset.page) === cur) btn.classList.add('cur');
+    });
+  });
+}
+function renderPagedMCQ(stageKey, qArray, opts, submitFn, submitLabel, firstPageExtra, everyPageExtra){
+  const n = qArray.length;
+  return renderQNav(stageKey, qArray, !!opts.allowSkip) + qArray.map((q,i)=>{
+    const prevBtn = (ALLOW_BACK_NAVIGATION && i>0)
+      ? `<button type="button" class="secondary" onclick="showStagePage('${stageKey}',${i-1})">&larr; Previous</button>`
+      : `<span></span>`;
+    const nextBtn = (i<n-1)
+      ? `<button type="button" onclick="showStagePage('${stageKey}',${i+1})">Next &rarr;</button>`
+      : `<button type="button" onclick="${submitFn}()">${submitLabel}</button>`;
+    return `<div class="qpage${i===0?' active':''}" data-stage="${stageKey}" data-page="${i}">
+      ${i===0 && firstPageExtra ? firstPageExtra : ''}
+      <h2 class="part-title">${q.part}</h2>
+      <p class="qcounter">Question ${i+1} of ${n}</p>
+      ${everyPageExtra || ''}
+      ${renderMCQBlock([q], opts)}
+      <div class="pagernav">${prevBtn}${nextBtn}</div>
+    </div>`;
+  }).join('');
+}
+window.showStagePage = function(stageKey, idx){
+  const pages = document.querySelectorAll(`.qpage[data-stage="${stageKey}"]`);
+  if(!pages.length) return;
+  idx = Math.max(0, Math.min(idx, pages.length-1));
+  pages.forEach(p=>p.classList.toggle('active', Number(p.dataset.page)===idx));
+  stagePageIndex[stageKey] = idx;
+  updateQNav();
+  if (typeof applyCalculatorPageRule === 'function') applyCalculatorPageRule(pages[0].closest('.section'));
+  window.scrollTo(0,0);
+};
 window.selectOpt = function(qid, idx){
   const card = document.querySelector(`[data-qid="${qid}"]`);
   card.querySelectorAll('.opts label').forEach(l=>l.classList.remove('checked'));
@@ -618,6 +669,7 @@ window.selectOpt = function(qid, idx){
   if(skipBox){ skipBox.checked=false; }
   card.dataset.answered = idx;
   card.dataset.skipped = '';
+  updateQNav();
 };
 window.toggleSkip = function(qid){
   const card = document.querySelector(`[data-qid="${qid}"]`);
@@ -630,6 +682,7 @@ window.toggleSkip = function(qid){
   } else {
     card.dataset.skipped = '';
   }
+  updateQNav();
 };
 function collectMCQ(qArray){
   const result = {}; let allDone = true;
@@ -799,7 +852,7 @@ const STAGE2_QUESTIONS = [
 
 /* =====================================================================
    BUILD SECTIONS (eager: General Instructions, Participant Details,
-   Demographics, Background Information - none of these depend on the
+   Background Information - none of these depend on the
    randomised condition, so they are built immediately at page load)
 ===================================================================== */
 let sidx = 0;
@@ -884,58 +937,6 @@ window.resumeSavedProgress = function(){
   buildMainFlowAndGo(snap.flowIndex);
 };
 
-// ---------- SECTION 0: DEMOGRAPHICS ----------
-const SEC_DEMOGRAPHICS = sidx;
-addSection(sidx, `
-  <h1 class="sec-title">Section 0 &middot; Demographics</h1>
-  <p class="sec-sub">Please answer all questions. Your responses are completely confidential and will only be used for research purposes.</p>
-  <div class="card"><div class="qtext">1. Age</div><input type="number" id="d_age" min="15" max="90"> years</div>
-  <div class="card">
-    <div class="qtext">2. Gender</div>
-    <div class="opts">${['Male','Female','Non-binary or third gender','Prefer not to say'].map(x=>`<label><input type="radio" name="d_gender" value="${x}"><span>${x}</span></label>`).join('')}</div>
-  </div>
-  <div class="card"><div class="qtext">3. Programme of study</div><input type="text" id="d_programme"></div>
-  <div class="card">
-    <div class="qtext">4. Year of study</div>
-    <div class="opts">${['First year','Second year','Third year','Fourth year or above'].map(x=>`<label><input type="radio" name="d_year" value="${x}"><span>${x}</span></label>`).join('')}</div>
-  </div>
-  <div class="card"><div class="qtext">5. University / Institution</div><input type="text" id="d_univ"></div>
-  <div class="card">
-    <div class="qtext">6. Your prior degree</div>
-    <div class="opts">
-      <label><input type="radio" name="d_priordegree" value="STEM"><span>STEM (e.g., Engineering, Computer Science, Economics, Mathematics, Physics, Biology)</span></label>
-      <label><input type="radio" name="d_priordegree" value="Non-STEM"><span>Non-STEM (e.g., Business, Psychology, History, Literature)</span></label>
-      <label><input type="radio" name="d_priordegree" value="Other" onclick="document.getElementById('d_priordegree_other').style.display='inline-block'"><span>Other (please specify):</span> <input type="text" id="d_priordegree_other" style="width:50%;display:none;margin-left:6px;"></label>
-    </div>
-  </div>
-  <div class="card">
-    <div class="qtext">7. Highest parental (Mother) education</div>
-    <div class="opts">${['Less than secondary school','Secondary school (Class 10 or 12)','Undergraduate degree','Postgraduate degree or higher'].map(x=>`<label><input type="radio" name="d_mothered" value="${x}"><span>${x}</span></label>`).join('')}</div>
-  </div>
-  <div class="card">
-    <div class="qtext">8. Highest parental (Father) education</div>
-    <div class="opts">${['Less than secondary school','Secondary school (Class 10 or 12)','Undergraduate degree','Postgraduate degree or higher'].map(x=>`<label><input type="radio" name="d_fathered" value="${x}"><span>${x}</span></label>`).join('')}</div>
-  </div>
-  <div class="card"><div class="qtext">9. Years of Work Experience (Internship does not count as work experience)</div><input type="number" id="d_workexp" min="0"></div>
-  <div class="navrow"><button onclick="finishDemographics()">Continue</button></div>
-`);
-sidx++;
-window.finishDemographics = function(){
-  answers.demographics = {
-    age: document.getElementById('d_age').value,
-    gender: (document.querySelector('input[name=d_gender]:checked')||{}).value || null,
-    programme: document.getElementById('d_programme').value,
-    yearOfStudy: (document.querySelector('input[name=d_year]:checked')||{}).value || null,
-    university: document.getElementById('d_univ').value,
-    priorDegree: (document.querySelector('input[name=d_priordegree]:checked')||{}).value || null,
-    priorDegreeOther: document.getElementById('d_priordegree_other').value,
-    motherEd: (document.querySelector('input[name=d_mothered]:checked')||{}).value || null,
-    fatherEd: (document.querySelector('input[name=d_fathered]:checked')||{}).value || null,
-    workExp: document.getElementById('d_workexp').value
-  };
-  goTo(SEC_DEMOGRAPHICS+1);
-};
-
 // ---------- SECTION 1: BACKGROUND INFORMATION ----------
 const SEC_BACKGROUND = sidx;
 addSection(sidx, `
@@ -996,52 +997,53 @@ mainFlowBuilt = true;
 // ---------- SECTION 2: STAGE 1 ABILITY ASSESSMENT ----------
 addSection(sidx, `
   <h1 class="sec-title">Section 2 &middot; Stage 1 Assessment</h1>
+  ${renderPagedMCQ('stage1', STAGE1_QUESTIONS, {allowSkip:false}, 'finishStage1', 'Submit Section 2', `
   <div class="instructions">
     This section contains 10 multiple-choice questions spanning three areas: Quantitative Reasoning, Data Interpretation and Logical Reasoning, and Verbal Ability. For each question, select the single best answer by choosing any one of the four options A, B, C, or D.
     <br><b>Payment rule:</b> You earn Rs. 15 for each correct answer. Incorrect answers and skipped questions earn Rs. 0. Since there is no penalty for incorrect answers, you should attempt every question.
-    <br><br>After each question, you will also be asked how confident you are that your answer is correct. For each question, you earn an additional bonus based on your stated confidence and whether your answer was correct, according to the table below:
-    <table class="choicetable" style="margin-top:8px;font-size:12px;">
-      <thead><tr><th>If your confidence was:</th><th>Bonus if you were CORRECT:</th><th>Bonus if you were WRONG:</th></tr></thead>
-      <tbody>
-        ${CONFIDENCE_LEVELS.map(c=>`<tr><td>${c.label}</td><td>Rs. ${c.bonusCorrect.toFixed(2)}</td><td>Rs. ${c.bonusWrong.toFixed(2)}</td></tr>`).join('')}
-      </tbody>
-    </table>
-    <br>In short: the more confident you say you are, the more you can earn if you were right, but the more you lose if you were wrong. Saying you are 50% confident always pays the same either way, so that is the honest answer when you genuinely do not know. You will always earn the most, on average, by honestly reporting how confident you actually feel about each answer.
-    <br><b>Time allowed: 20 minutes.</b>
-  </div>
-  <h2 class="part-title">Part A: Quantitative Reasoning (Questions 1&ndash;4)</h2>
-  ${renderMCQBlock(STAGE1_QUESTIONS.slice(0,4), {allowSkip:false, confidence:true})}
-  <h2 class="part-title">Part B: Data Interpretation and Logical Reasoning (Questions 5&ndash;7)</h2>
-  ${renderMCQBlock(STAGE1_QUESTIONS.slice(4,7), {allowSkip:false, confidence:true})}
-  <h2 class="part-title">Part C: Verbal Analysis (Questions 8&ndash;10)</h2>
-  ${renderMCQBlock(STAGE1_QUESTIONS.slice(7,10), {allowSkip:false, confidence:true})}
-  <div class="navrow"><button onclick="finishStage1()">Submit Section 2</button></div>
+    <br><b>Time allowed: 18 minutes.</b> Each question appears on its own page; use the Next button to move through them.
+  </div>`)}
 `);
 const SEC_STAGE1 = sidx; sidx++;
-function beginStage1(){ startTimer(20*60, null, ()=>{ finishStage1(true); }); }
+function beginStage1(){ startTimer(18*60, null, ()=>{ finishStage1(true); }); }
 window.finishStage1 = function(auto){
   stopTimer();
   const {result} = collectMCQ(STAGE1_QUESTIONS);
-  const confidenceResult = collectConfidence(STAGE1_QUESTIONS);
-  let confidenceBonus = 0;
-  STAGE1_QUESTIONS.forEach(q=>{
-    const r = result[q.id];
-    const confVal = confidenceResult[q.id];
-    if(confVal !== null && r.chosen !== null){
-      const level = CONFIDENCE_LEVELS.find(c=>c.value===confVal);
-      const isCorrect = r.chosen === r.correct;
-      const bonus = isCorrect ? level.bonusCorrect : level.bonusWrong;
-      r.confidence = confVal;
-      r.confidenceBonus = bonus;
-      confidenceBonus += bonus;
-    } else {
-      r.confidence = confVal;
-      r.confidenceBonus = 0;
-    }
-  });
-  answers.stage1 = { responses: result, autoSubmitted: !!auto, confidenceBonusTotal: Math.round(confidenceBonus*100)/100 };
+  answers.stage1 = { responses: result, autoSubmitted: !!auto };
   goTo(SEC_STAGE1+1);
 };
+
+// ---------- SECTION 2 (cont.): BELIEFS ABOUT STAGE 1 PERFORMANCE ----------
+addSection(sidx, `
+  <h1 class="sec-title">Section 2 &middot; Your Performance</h1>
+  <div class="instructions">Please answer the following two questions about your Section 2 performance. Answer based on your honest personal belief.</div>
+  <div class="card">
+    <div class="qtext">Question 1: Out of the 10 questions in Section 2, how many do you think you answered correctly?</div>
+    I think I answered approximately <input type="number" id="confAbs" style="width:100px;display:inline-block;" min="0" max="10"> questions correctly out of 10.
+    <div class="footnote">You earn Rs. 20 if your estimate is within one of the actual number of questions you answered correctly in Section 2 (for example, if you actually got 6 right, an estimate of 5, 6 or 7 earns Rs. 20).</div>
+  </div>
+  <div class="card">
+    <div class="qtext">Question 2: Compared to all other participants in today\u2019s session, how do you think your Section 2 performance ranks?</div>
+    <div class="opts">
+      <label><input type="radio" name="confRel" value="Top third"><span>Top third of participants</span></label>
+      <label><input type="radio" name="confRel" value="Middle third"><span>Middle third</span></label>
+      <label><input type="radio" name="confRel" value="Bottom third"><span>Bottom third</span></label>
+    </div>
+    <div class="footnote">This question is for research purposes only and does not affect your payment.</div>
+  </div>
+  <div class="flag" id="confFlag" style="display:none;">Please answer both questions (Question 1 must be a whole number from 0 to 10).</div>
+  <div class="navrow"><button onclick="finishConfidence()">Continue to Section 3</button></div>
+`);
+const SEC_CONFIDENCE = sidx; sidx++;
+window.finishConfidence = function(){
+  const abs = document.getElementById('confAbs').value;
+  const rel = (document.querySelector('input[name=confRel]:checked')||{}).value;
+  const absNum = Number(abs);
+  if(abs===''||!rel||!Number.isInteger(absNum)||absNum<0||absNum>10){ document.getElementById('confFlag').style.display='block'; return; }
+  answers.confidence = { absoluteEstimate: absNum, relativeRank: rel };
+  goTo(SEC_CONFIDENCE+1);
+};
+
 
 // ---------- SECTION 3: DECISION TASKS ----------
 // Task A: Risk Preferences
@@ -1175,17 +1177,25 @@ window.finishTaskB = function(){
 };
 
 // ---------- SECTION 4: SCORING RULE REVEAL ----------
+// Same money in every rule (Rs. 20 per correct, -Rs. 5 per wrong); only the point numbers differ.
 const conditionText = {
-  1: {label:'Condition 1 (Moderate Penalty, Low Numerosity)', correct:1, wrong:-0.25},
-  2: {label:'Condition 2 (Moderate Penalty, High Numerosity)', correct:5, wrong:-1.25}
+  1: {label:'Condition 1 (Low Numerosity)',    correct:1,  wrong:-0.25, rsPerPoint:20},
+  2: {label:'Condition 2 (Medium Numerosity)', correct:4,  wrong:-1,    rsPerPoint:5},
+  3: {label:'Condition 3 (High Numerosity)',   correct:10, wrong:-2.5,  rsPerPoint:2}
 };
+const RULE = conditionText[R.condition];
+function ptsStr(v){ return (v>0?'+':(v<0?'\u2212':'')) + Math.abs(v); }
+function ptWord(v){ return Math.abs(v)===1 ? 'point' : 'points'; }
+const RULE_BANNER = `<div class="instructions warn" style="padding:8px 14px;margin:12px 0;">
+  <b>Your scoring rule:</b> Correct = <b>${ptsStr(RULE.correct)}</b> ${ptWord(RULE.correct)} &nbsp;&middot;&nbsp; Wrong = <b>${ptsStr(RULE.wrong)}</b> ${ptWord(RULE.wrong)} &nbsp;&middot;&nbsp; Skipped = <b>0</b> points
+</div>`;
 addSection(sidx, `
   <h1 class="sec-title">Section 4 &middot; Stage 2 Assessment</h1>
   <div class="instructions warn">
     <b>Your Scoring Rule for This Section:</b><br>
-    Correct answer = <b>${conditionText[R.condition].correct>0?'+':''}${conditionText[R.condition].correct}</b> point(s). Wrong answer = <b>${conditionText[R.condition].wrong}</b> point(s). Skipped = <b>0</b> points.
+    Correct answer = <b>${ptsStr(RULE.correct)}</b> ${ptWord(RULE.correct)}. Wrong answer = <b>${ptsStr(RULE.wrong)}</b> ${ptWord(RULE.wrong)}. Skipped = <b>0</b> points.
     <br><br>
-    <b>Ranking and Bonus:</b> Your standardized score relative to all participants (around 600) in this study determines your rank. The top 10% of participants will receive an additional bonus of Rs. 1000. Top 11&ndash;25% of participants will receive an additional bonus of Rs. 500. There is no payment for getting an individual question correct.
+    <b>Payment:</b> You are paid for your own score. Each point is worth <b>Rs. ${RULE.rsPerPoint}</b>. Your earnings for this section equal your total points &times; Rs. ${RULE.rsPerPoint}.
     <br><br>You must either choose any one of the four options A, B, C, D or tick the Skip box for every question. Skipping a question will not reward or cost you any score.
     <br><b>Time allowed: 18 minutes.</b>
   </div>
@@ -1194,10 +1204,11 @@ addSection(sidx, `
 sidx++;
 
 // ---------- COMPREHENSION CHECK ----------
-const CC_FIRST_Q1 = [5, 1, 0.25, 1.25, 0];
-const CC_FIRST_Q2 = [-1.25, -0.25, 0, -1, -5];
-const CC_RETRY_Q1 = [5, 1, 1.5, 0.25, 0.5, 1.25, 0];
-const CC_RETRY_Q2 = [1.25, 1.5, 0.25, 0.5, 0, 1, 5];
+// Each list contains the values of all three rules, so the options do not reveal the participant's rule.
+const CC_FIRST_Q1 = [1, 4, 10, 2.5, 0.25, 0];
+const CC_FIRST_Q2 = [-0.25, -1, -2.5, -4, -10, 0];
+const CC_RETRY_Q1 = [10, 0.25, 4, 2.5, 1, 0, 1.5];
+const CC_RETRY_Q2 = [2.5, 1, 0.25, 4, 0, 10, 1.25];
 let ccAttempt = 1;
 addSection(sidx, `
   <h1 class="sec-title">Grading Rule Check</h1>
@@ -1274,16 +1285,10 @@ window.submitComprehensionCheck = function(){
 addSection(sidx, `
   <h1 class="sec-title">Section 4 &middot; Stage 2 Assessment</h1>
   <div class="instructions">
-    For each of the 10 questions below, choose any one of the 4 options A, B, C, D OR tick the Skip box. Do not leave any question entirely blank.
-    <br><b>Time allowed: 18 minutes.</b> Scoring rule: Correct = <b>${conditionText[R.condition].correct>0?'+':''}${conditionText[R.condition].correct}</b>, Wrong = <b>${conditionText[R.condition].wrong}</b>, Skipped = <b>0</b>
+    Each of the 10 questions appears on its own page. For each question, choose any one of the 4 options A, B, C, D OR tick the Skip box. Do not leave any question entirely blank.
+    <br><b>Time allowed: 18 minutes.</b> Each point is worth Rs. ${RULE.rsPerPoint}.
   </div>
-  <h2 class="part-title">Part A: Quantitative Reasoning (Questions 1&ndash;4)</h2>
-  ${renderMCQBlock(STAGE2_QUESTIONS.slice(0,4), {allowSkip:true})}
-  <h2 class="part-title">Part B: Data Interpretation and Logical Reasoning (Questions 5&ndash;7)</h2>
-  ${renderMCQBlock(STAGE2_QUESTIONS.slice(4,7), {allowSkip:true})}
-  <h2 class="part-title">Part C: Verbal Ability (Questions 8&ndash;10)</h2>
-  ${renderMCQBlock(STAGE2_QUESTIONS.slice(7,10), {allowSkip:true})}
-  <div class="navrow"><button onclick="finishStage2()">Submit Section 4</button></div>
+  ${renderPagedMCQ('stage2', STAGE2_QUESTIONS, {allowSkip:true}, 'finishStage2', 'Submit Section 4', '', RULE_BANNER)}
 `);
 const SEC_STAGE2 = sidx; sidx++;
 function beginStage2(){ startTimer(18*60, null, ()=>finishStage2(true)); }
@@ -1294,37 +1299,268 @@ window.finishStage2 = function(auto){
   goTo(SEC_STAGE2+1);
 };
 
-// ---------- SECTION 5: CONFIDENCE ELICITATION ----------
+// ---------- SECTION 4 (cont.): BELIEF ABOUT STAGE 2 PERFORMANCE ----------
 addSection(sidx, `
-  <h1 class="sec-title">Section 5</h1>
-  <div class="instructions">Please answer the following two questions about your Section 4 performance. Answer based on your honest personal belief.</div>
+  <h1 class="sec-title">Section 4 &middot; Your Performance</h1>
+  <div class="instructions">Please answer the following question about your Section 4 performance. Answer based on your honest personal belief.</div>
   <div class="card">
-    <div class="qtext">Question 1: Out of the 10 questions in Section 4, how many do you think you answered correctly?</div>
-    I think I answered approximately <input type="number" id="confAbs" style="width:100px;display:inline-block;" min="0" max="10"> questions correctly out of 10.
-    <div class="footnote">Bonus of Rs. 50 paid if your estimate is within 2 of your actual number of correct answers.</div>
+    <div class="qtext">Out of the 10 questions in Section 4, how many do you think you answered correctly?</div>
+    I think I answered approximately <input type="number" id="confAbs2" style="width:100px;display:inline-block;" min="0" max="10"> questions correctly out of 10.
+    <div class="footnote">You earn Rs. 20 if your estimate is within one of the actual number of questions you answered correctly in Section 4 (for example, if you actually got 6 right, an estimate of 5, 6 or 7 earns Rs. 20).</div>
   </div>
-  <div class="card">
-    <div class="qtext">Question 2: Compared to all other participants in today\u2019s session, how do you think your Section 4 performance ranks?</div>
-    <div class="opts">
-      <label><input type="radio" name="confRel" value="Top third"><span>Top third of participants</span></label>
-      <label><input type="radio" name="confRel" value="Middle third"><span>Middle third</span></label>
-      <label><input type="radio" name="confRel" value="Bottom third"><span>Bottom third</span></label>
-    </div>
-    <div class="footnote">This question is for research purposes only and does not affect your payment.</div>
-  </div>
-  <div class="flag" id="confFlag" style="display:none;">Please answer both questions.</div>
-  <div class="navrow"><button onclick="finishConfidence()">Continue to Post-Experiment Survey</button></div>
+  <div class="flag" id="confFlag2" style="display:none;">Please enter a whole number from 0 to 10.</div>
+  <div class="navrow"><button onclick="finishConfidenceStage2()">Continue</button></div>
 `);
-const SEC_CONFIDENCE = sidx; sidx++;
-window.finishConfidence = function(){
-  const abs = document.getElementById('confAbs').value;
-  const rel = (document.querySelector('input[name=confRel]:checked')||{}).value;
-  if(abs===''||!rel){ document.getElementById('confFlag').style.display='block'; return; }
-  answers.confidence = { absoluteEstimate: abs, relativeRank: rel };
-  goTo(SEC_CONFIDENCE+1);
+const SEC_CONFIDENCE2 = sidx; sidx++;
+window.finishConfidenceStage2 = function(){
+  const raw = document.getElementById('confAbs2').value.trim();
+  const v = Number(raw);
+  if(raw===''||!Number.isInteger(v)||v<0||v>10){ document.getElementById('confFlag2').style.display='block'; return; }
+  answers.confidenceStage2 = { absoluteEstimate: v };
+  goTo(SEC_CONFIDENCE2+1);
 };
 
-// ---------- SECTION 6: POST-EXPERIMENT SURVEY ----------
+// ---------- SECTION 5: STAGE 3 (announced only after Stage 2 has ended) ----------
+const STAGE3_WIN_AMOUNT = 50;      // Rs. won per question under the robot rule
+const STAGE3_NEW_ANSWER_PAY = 10;  // Rs. per correct answer to a question skipped / not reached in Stage 2
+addSection(sidx, `
+  <h1 class="sec-title">Section 5 &middot; Stage 3</h1>
+  <div class="instructions">
+    Section 4 has ended and your Section 4 answers and points are final. Nothing in this section changes your Section 4 points.
+    <br><br>In this section you will see each of the 10 Section 4 questions again, one per page.
+    <ul style="margin:8px 0 0 18px;padding:0;">
+      <li><b>Questions you answered in Section 4:</b> your answer is shown and cannot be changed.</li>
+      <li><b>Questions you skipped or did not reach in Section 4:</b> you must now choose an answer. You earn <b>Rs. ${STAGE3_NEW_ANSWER_PAY}</b> for each of these that you answer correctly.</li>
+    </ul>
+    <br><b>For every question</b>, you will then state your confidence: the chance, from 0 to 100 percent, that the answer shown is correct.
+    <br><br><b>How your confidence is paid.</b> For each question, the computer randomly draws a robot accuracy between 0 and 100 percent (every value is equally likely).
+    <ul style="margin:8px 0 0 18px;padding:0;">
+      <li>If the robot&rsquo;s accuracy is <b>higher</b> than your stated confidence, the robot answers for you, and you win <b>Rs. ${STAGE3_WIN_AMOUNT}</b> with probability equal to the robot&rsquo;s accuracy.</li>
+      <li>Otherwise, you win <b>Rs. ${STAGE3_WIN_AMOUNT}</b> if your own answer is correct.</li>
+    </ul>
+    <br>Because of this rule, you earn the most on average by stating your honest belief about how likely your answer is to be correct. Stating a higher number than you believe makes you rely on your own answer when the robot would have been the better bet; stating a lower number does the reverse.
+    <br><br><b>Time allowed: 8 minutes.</b> All the confidence questions in this section must be completed within 8 minutes. The timer starts when you click &ldquo;Begin Stage 3&rdquo;. When time runs out, this section is submitted automatically, and any question left without an answer or a confidence earns Rs. 0.
+  </div>
+  <div class="navrow"><button onclick="enterStage3()">Begin Stage 3</button></div>
+`);
+const SEC_STAGE3_INTRO = sidx; sidx++;
+
+addSection(sidx, `
+  <h1 class="sec-title">Section 5 &middot; Stage 3</h1>
+  <div id="stage3Container"></div>
+`);
+const SEC_STAGE3 = sidx; sidx++;
+
+function stage2StatusFor(q){
+  const r = (answers.stage2 && answers.stage2.responses || {})[q.id] || {};
+  if(r.chosen !== null && r.chosen !== undefined) return { status:'answered', chosen:r.chosen };
+  return { status: r.skipped ? 'skipped' : 'not_reached', chosen:null };
+}
+function renderStage3(){
+  const letters = ['A','B','C','D'];
+  const n = STAGE2_QUESTIONS.length;
+  const html = STAGE2_QUESTIONS.map((q,i)=>{
+    const st = stage2StatusFor(q);
+    const qid = q.id + '_s3';
+    const locked = st.status === 'answered';
+    const note = locked
+      ? `<div class="footnote" style="margin:0 0 8px;">This is your Section 4 answer. It cannot be changed.</div>`
+      : `<div class="footnote" style="margin:0 0 8px;color:var(--warn);">You ${st.status==='skipped'?'skipped':'did not reach'} this question in Section 4. Please choose an answer now (Rs. ${STAGE3_NEW_ANSWER_PAY} if correct).</div>`;
+    const optsHtml = q.opts.map((o,oi)=>{
+      const isChosen = locked && st.chosen === oi;
+      return `<label class="${isChosen?'checked':''}" style="${locked?'cursor:default;':''}${locked && !isChosen?'opacity:.55;':''}"><input type="radio" name="${qid}" value="${oi}" ${isChosen?'checked':''} ${locked?'disabled':`onchange="selectOpt('${qid}',${oi})"`}><span>${letters[oi]}. ${o}</span></label>`;
+    }).join('');
+    const prevBtn = (ALLOW_BACK_NAVIGATION && i>0)
+      ? `<button type="button" class="secondary" onclick="showStagePage('stage3',${i-1})">&larr; Previous</button>`
+      : `<span></span>`;
+    const nextBtn = (i<n-1)
+      ? `<button type="button" onclick="stage3Next(${i})">Next &rarr;</button>`
+      : `<button type="button" onclick="finishStage3()">Submit Section 5</button>`;
+    return `<div class="qpage${i===0?' active':''}" data-stage="stage3" data-page="${i}">
+      <h2 class="part-title">${q.part}</h2>
+      <p class="qcounter">Question ${i+1} of ${n}</p>
+      <div class="card" data-qid="${qid}" ${locked?`data-answered="${st.chosen}"`:''}>
+        <div class="qtext"><span class="qnum">Q${q.num}</span>${q.html?q.html:q.text}</div>
+        ${note}
+        <div class="opts">${optsHtml}</div>
+      </div>
+      <div class="card">
+        <div class="qtext">What is the chance (0 to 100 percent) that the answer shown above is correct?</div>
+        <input type="number" id="s3conf_${q.id}" min="0" max="100" step="1" style="width:110px;display:inline-block;"> %
+      </div>
+      <div class="flag" id="s3flag_${i}" style="display:none;"></div>
+      <div class="pagernav">${prevBtn}${nextBtn}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('stage3Container').innerHTML = html;
+  stagePageIndex.stage3 = 0;
+}
+function stage3PageProblem(i){
+  const q = STAGE2_QUESTIONS[i];
+  const card = document.querySelector(`[data-qid="${q.id}_s3"]`);
+  const ans = card ? card.dataset.answered : undefined;
+  if(ans === undefined || ans === '') return 'Please choose an answer for this question.';
+  const raw = document.getElementById('s3conf_'+q.id).value.trim();
+  const v = Number(raw);
+  if(raw === '' || !Number.isFinite(v) || v < 0 || v > 100) return 'Please enter your confidence as a number from 0 to 100.';
+  return null;
+}
+window.stage3Next = function(i){
+  const msg = stage3PageProblem(i);
+  const flag = document.getElementById('s3flag_'+i);
+  if(msg){ flag.textContent = msg; flag.style.display = 'block'; return; }
+  flag.style.display = 'none';
+  showStagePage('stage3', i+1);
+};
+const STAGE3_TIME_LIMIT_SEC = 8*60;
+function beginStage3(){ startTimer(STAGE3_TIME_LIMIT_SEC, null, ()=>finishStage3(true)); }
+window.enterStage3 = function(){
+  renderStage3();
+  goTo(SEC_STAGE3);
+  beginStage3();
+};
+window.finishStage3 = function(auto){
+  for(let i=0;i<STAGE2_QUESTIONS.length && !auto;i++){
+    const msg = stage3PageProblem(i);
+    if(msg){
+      showStagePage('stage3', i);
+      const flag = document.getElementById('s3flag_'+i);
+      flag.textContent = msg; flag.style.display = 'block';
+      return;
+    }
+  }
+  stopTimer();
+  const items = {};
+  let newAnswered = 0, newCorrect = 0, wins = 0, robotCount = 0, ownCount = 0, incompleteCount = 0;
+  STAGE2_QUESTIONS.forEach(q=>{
+    const st = stage2StatusFor(q);
+    const ansRaw = document.querySelector(`[data-qid="${q.id}_s3"]`).dataset.answered;
+    const confRaw = document.getElementById('s3conf_'+q.id).value.trim();
+    const confNum = Number(confRaw);
+    const chosen = (ansRaw === undefined || ansRaw === '') ? null : Number(ansRaw);
+    const confidence = (confRaw === '' || !Number.isFinite(confNum) || confNum < 0 || confNum > 100) ? null : confNum;
+    const isCorrect = chosen !== null && chosen === q.ans;
+    if(st.status !== 'answered'){ newAnswered++; if(isCorrect) newCorrect++; }
+    if(chosen === null || confidence === null){
+      // Left incomplete when the 8-minute timer ran out: earns Rs. 0, no robot draw.
+      incompleteCount++;
+      items[q.id] = {
+        stage2Status: st.status, chosen: chosen, correct: q.ans, isCorrect: isCorrect,
+        confidence: confidence, incomplete: true,
+        robotAccuracy: null, robotAnswered: null, robotDraw: null,
+        confidencePayout: 0, newAnswerPayout: 0
+      };
+      return;
+    }
+    const robotAccuracy = Math.round(Math.random()*10000)/100;   // uniform on [0,100], 2 d.p.
+    const robotAnswers = robotAccuracy > confidence;
+    let robotDraw = null, won;
+    if(robotAnswers){
+      robotDraw = Math.round(Math.random()*10000)/100;            // uniform on [0,100), 2 d.p.
+      won = robotDraw < robotAccuracy;
+      robotCount++;
+    } else {
+      won = isCorrect;
+      ownCount++;
+    }
+    if(won) wins++;
+    const newAnswerPay = (st.status !== 'answered' && isCorrect) ? STAGE3_NEW_ANSWER_PAY : 0;
+    items[q.id] = {
+      stage2Status: st.status,          // 'answered' | 'skipped' | 'not_reached'
+      chosen: chosen, correct: q.ans, isCorrect: isCorrect,
+      confidence: confidence, incomplete: false,
+      robotAccuracy: robotAccuracy, robotAnswered: robotAnswers, robotDraw: robotDraw,
+      confidencePayout: won ? STAGE3_WIN_AMOUNT : 0,
+      newAnswerPayout: newAnswerPay
+    };
+  });
+  answers.stage3 = {
+    items: items,
+    newlyAnsweredCount: newAnswered,
+    newlyAnsweredCorrect: newCorrect,
+    newAnswerPayTotal: newCorrect * STAGE3_NEW_ANSWER_PAY,
+    robotAnsweredCount: robotCount,
+    ownAnswerCountedCount: ownCount,
+    incompleteCount: incompleteCount,
+    autoSubmitted: !!auto,
+    confidenceWins: wins,
+    confidencePayTotal: wins * STAGE3_WIN_AMOUNT,
+    completedAt: new Date().toISOString()
+  };
+  goTo(SEC_STAGE3+1);
+};
+
+// ---------- SECTION 6: FINAL TASK (gambles scored under the participant's own rule) ----------
+// Win chances 10,15,...,55 percent, then a 90 percent attention check. Declining scores 0.
+// One decision is paid; its points are added to the Stage 2 (Section 4) points before conversion to Rs.
+const GAMBLE_PROBS = [10,15,20,25,30,35,40,45,50,55,90];
+addSection(sidx, `
+  <h1 class="sec-title">Section 6</h1>
+  <div class="instructions">
+    Below are ${GAMBLE_PROBS.length} options. Each option is scored in points under the scoring rule from Section 4:
+    if you accept and win, you gain <b>${ptsStr(RULE.correct)}</b> ${ptWord(RULE.correct)}; if you accept and lose, you lose <b>${Math.abs(RULE.wrong)}</b> ${ptWord(RULE.wrong)}. Only the chance of winning differs between rows.
+    If you decline an option, it scores <b>0</b> points.
+    <br><br>For each row, choose Accept or Decline. One row will be randomly selected and played out. The points from that row will be <b>added to your Section 4 points</b>, and the total will be converted to money at <b>Rs. ${RULE.rsPerPoint}</b> per point.
+    Please treat every row as if it is the one that will count.
+  </div>
+  <table class="choicetable">
+    <thead><tr><th style="width:56px;">Row</th><th>Option</th><th style="width:100px;">Accept</th><th style="width:100px;">Decline</th></tr></thead>
+    <tbody>
+      ${GAMBLE_PROBS.map((g,i)=>`
+      <tr data-qid="gamble_${i}">
+        <td class="rownum">${i+1}</td>
+        <td>${g}% chance you win ${ptsStr(RULE.correct)} ${ptWord(RULE.correct)}, ${100-g}% chance you lose ${Math.abs(RULE.wrong)} ${ptWord(RULE.wrong)}</td>
+        <td class="opts"><label><input type="radio" name="gamble_${i}" onchange="setRadioAnswer('gamble_${i}',0)"></label></td>
+        <td class="opts"><label><input type="radio" name="gamble_${i}" onchange="setRadioAnswer('gamble_${i}',1)"></label></td>
+      </tr>`).join('')}
+    </tbody>
+  </table>
+  <div class="flag" id="gambleFlag" style="display:none;">Please answer every row before continuing.</div>
+  <div class="navrow"><button onclick="finishGambleTask()">Continue</button></div>
+`);
+const SEC_GAMBLE = sidx; sidx++;
+window.finishGambleTask = function(){
+  let complete = true; const resp = {};
+  GAMBLE_PROBS.forEach((g,i)=>{
+    const val = document.querySelector(`[data-qid="gamble_${i}"]`).dataset.answered;
+    if(val===undefined||val==='') complete=false;
+    resp['row'+i] = val==='0' ? 'Accept' : (val==='1' ? 'Decline' : null);
+  });
+  if(!complete){ document.getElementById('gambleFlag').style.display='block'; return; }
+  // Lowest win chance (among 10-55%) at which the participant accepts; null if she never accepts.
+  let threshold = null;
+  for(let i=0;i<GAMBLE_PROBS.length-1;i++){ if(resp['row'+i]==='Accept'){ threshold = GAMBLE_PROBS[i]; break; } }
+  // Number of switches between Accept/Decline across the ten ordered rows (1 or 0 = consistent cutoff).
+  let switches = 0;
+  for(let i=1;i<GAMBLE_PROBS.length-1;i++){ if(resp['row'+i]!==resp['row'+(i-1)]) switches++; }
+  const row = Math.floor(Math.random()*GAMBLE_PROBS.length);
+  const winPct = GAMBLE_PROBS[row];
+  const decision = resp['row'+row];
+  let draw = null, outcome = 'declined', points = 0;
+  if(decision === 'Accept'){
+    draw = Math.round(Math.random()*10000)/100;   // uniform on [0,100), 2 d.p.
+    const won = draw < winPct;
+    outcome = won ? 'win' : 'loss';
+    points = won ? RULE.correct : RULE.wrong;
+  }
+  answers.gambleTask = {
+    condition: R.condition,
+    winProbabilitiesPct: GAMBLE_PROBS,
+    responses: resp,
+    lowestAcceptedPct: threshold,
+    switchesAcross10to55: switches,
+    attentionCheckAccepted: resp['row'+(GAMBLE_PROBS.length-1)] === 'Accept',
+    randomlySelectedRow: row,
+    selectedWinPct: winPct,
+    selectedDecision: decision,
+    randomDraw: draw,
+    outcome: outcome,
+    points: points
+  };
+  goTo(SEC_GAMBLE+1);
+};
+
+// ---------- SECTION 7: POST-EXPERIMENT SURVEY ----------
 function likertRow(id, text){
   return `<div class="likert-row" data-likert="${id}">
     <div style="max-width:55%;">${text}</div>
@@ -1341,11 +1577,11 @@ const postSurveyItems = [
   {id:'ps5', text:'Skipping a question felt safer than risking a wrong answer.'}
 ];
 addSection(sidx, `
-  <h1 class="sec-title">Section 6 &middot; Post-Experiment Survey</h1>
+  <h1 class="sec-title">Section 7 &middot; Post-Experiment Survey</h1>
   <div class="instructions">Please rate your agreement with each statement using a scale from 1 to 7: 1 = Strongly Disagree &hellip; 4 = Neither Agree nor Disagree &hellip; 7 = Strongly Agree. Answer based on your experience in Section 4 only. (R) indicates a reverse-coded item.</div>
   <div class="card">${postSurveyItems.map(it=>likertRow(it.id, it.text)).join('')}</div>
   <div class="flag" id="postSurveyFlag" style="display:none;">Please rate every statement.</div>
-  <div class="navrow"><button onclick="finishPostSurvey()">Finish &amp; See Summary</button></div>
+  <div class="navrow"><button onclick="finishPostSurvey()">Continue</button></div>
 `);
 const SEC_POSTSURVEY = sidx; sidx++;
 const postSurveyVals = {};
@@ -1354,11 +1590,64 @@ window.finishPostSurvey = function(){
   const allDone = postSurveyItems.every(it=>postSurveyVals[it.id]!==undefined);
   if(!allDone){ document.getElementById('postSurveyFlag').style.display='block'; return; }
   answers.postSurvey = Object.assign({}, postSurveyVals);
+  goTo(SEC_POSTSURVEY+1);
+};
+
+// ---------- SECTION 8: DEMOGRAPHICS (end of survey) ----------
+const SEC_DEMOGRAPHICS = sidx;
+addSection(sidx, `
+  <h1 class="sec-title">Section 8 &middot; Demographics</h1>
+  <p class="sec-sub">Please answer all questions. Your responses are completely confidential and will only be used for research purposes.</p>
+  <div class="card"><div class="qtext">1. Age</div><input type="number" id="d_age" min="15" max="90"> years</div>
+  <div class="card">
+    <div class="qtext">2. Gender</div>
+    <div class="opts">${['Male','Female','Non-binary or third gender','Prefer not to say'].map(x=>`<label><input type="radio" name="d_gender" value="${x}"><span>${x}</span></label>`).join('')}</div>
+  </div>
+  <div class="card"><div class="qtext">3. Programme of study</div><input type="text" id="d_programme"></div>
+  <div class="card">
+    <div class="qtext">4. Year of study</div>
+    <div class="opts">${['First year','Second year','Third year','Fourth year or above'].map(x=>`<label><input type="radio" name="d_year" value="${x}"><span>${x}</span></label>`).join('')}</div>
+  </div>
+  <div class="card"><div class="qtext">5. University / Institution</div><input type="text" id="d_univ"></div>
+  <div class="card">
+    <div class="qtext">6. Your prior degree</div>
+    <div class="opts">
+      <label><input type="radio" name="d_priordegree" value="STEM"><span>STEM (e.g., Engineering, Computer Science, Economics, Mathematics, Physics, Biology)</span></label>
+      <label><input type="radio" name="d_priordegree" value="Non-STEM"><span>Non-STEM (e.g., Business, Psychology, History, Literature)</span></label>
+      <label><input type="radio" name="d_priordegree" value="Other" onclick="document.getElementById('d_priordegree_other').style.display='inline-block'"><span>Other (please specify):</span> <input type="text" id="d_priordegree_other" style="width:50%;display:none;margin-left:6px;"></label>
+    </div>
+  </div>
+  <div class="card">
+    <div class="qtext">7. Highest parental (Mother) education</div>
+    <div class="opts">${['Less than secondary school','Secondary school (Class 10 or 12)','Undergraduate degree','Postgraduate degree or higher'].map(x=>`<label><input type="radio" name="d_mothered" value="${x}"><span>${x}</span></label>`).join('')}</div>
+  </div>
+  <div class="card">
+    <div class="qtext">8. Highest parental (Father) education</div>
+    <div class="opts">${['Less than secondary school','Secondary school (Class 10 or 12)','Undergraduate degree','Postgraduate degree or higher'].map(x=>`<label><input type="radio" name="d_fathered" value="${x}"><span>${x}</span></label>`).join('')}</div>
+  </div>
+  <div class="card"><div class="qtext">9. Years of Work Experience (Internship does not count as work experience)</div><input type="number" id="d_workexp" min="0"></div>
+  <div class="navrow"><button onclick="finishDemographics()">Finish &amp; See Summary</button></div>
+`);
+sidx++;
+window.finishDemographics = function(){
+  answers.demographics = {
+    age: document.getElementById('d_age').value,
+    gender: (document.querySelector('input[name=d_gender]:checked')||{}).value || null,
+    programme: document.getElementById('d_programme').value,
+    yearOfStudy: (document.querySelector('input[name=d_year]:checked')||{}).value || null,
+    university: document.getElementById('d_univ').value,
+    priorDegree: (document.querySelector('input[name=d_priordegree]:checked')||{}).value || null,
+    priorDegreeOther: document.getElementById('d_priordegree_other').value,
+    motherEd: (document.querySelector('input[name=d_mothered]:checked')||{}).value || null,
+    fatherEd: (document.querySelector('input[name=d_fathered]:checked')||{}).value || null,
+    workExp: document.getElementById('d_workexp').value
+  };
+  // Demographics is now the last page: mark the survey complete and show earnings.
   answers.completedAt = new Date().toISOString();
   computeEarnings();
   document.getElementById('earningsTotal').textContent = fmtRs(answers.earnings.total);
   document.getElementById('earningsBreakdown').innerHTML = renderEarningsBreakdown(answers.earnings);
-  goTo(SEC_POSTSURVEY+1);
+  goTo(SEC_DEMOGRAPHICS+1);
 };
 
 // ---------- FINAL SUMMARY ----------
@@ -1403,7 +1692,6 @@ function computeEarnings(){
   let stage1Correct = 0;
   Object.values(answers.stage1.responses || {}).forEach(r=>{ if(r && r.chosen === r.correct) stage1Correct++; });
   const stage1Pay = stage1Correct * 15;
-  const stage1ConfidenceBonus = (answers.stage1 && answers.stage1.confidenceBonusTotal) || 0;
 
   const breakdown = [];
   breakdown.push({
@@ -1415,11 +1703,6 @@ function computeEarnings(){
     section: 'Section 2 · Stage 1 Assessment',
     calc: `${stage1Correct} correct answer(s) × Rs. 15 = Rs. ${stage1Pay}`,
     amount: stage1Pay
-  });
-  breakdown.push({
-    section: 'Section 2 · Bonus',
-    calc: `Bonus earned based on the confidence level you selected after each Section 2 answer.`,
-    amount: stage1ConfidenceBonus
   });
 
   let taskAPay = 0;
@@ -1453,19 +1736,79 @@ function computeEarnings(){
     });
   }
 
-  const total = FIXED_FEE + stage1Pay + stage1ConfidenceBonus + taskAPay + taskBPay;
+  // Section 2: estimate of own Stage 1 score (Rs. 20 if within one)
+  const estimate = answers.confidence ? Number(answers.confidence.absoluteEstimate) : NaN;
+  const estimateHit = Number.isFinite(estimate) && Math.abs(estimate - stage1Correct) <= 1;
+  const estimatePay = estimateHit ? 20 : 0;
+  breakdown.push({
+    section: 'Section 2 · Estimate of Your Score',
+    calc: `You estimated ${Number.isFinite(estimate)?estimate:'-'} correct; you actually answered ${stage1Correct} correctly. ${estimateHit ? 'Your estimate was within one, so you earn Rs. 20.' : 'Your estimate was not within one, so you earn Rs. 0.'}`,
+    amount: estimatePay
+  });
 
-  const includedList = ['the fixed fee', 'Section 2 Stage 1 Assessment (including confidence bonus)', 'Task A', 'Task B'];
-  const excludedList = ['Stage 2 assessment bonus'];
+  // Section 4: Stage 2, paid for own score at the rule's rupees per point
+  let s2Correct = 0, s2Wrong = 0, s2Blank = 0;
+  Object.values((answers.stage2 && answers.stage2.responses) || {}).forEach(r=>{
+    if(!r || r.chosen === null || r.chosen === undefined) s2Blank++;
+    else if(r.chosen === r.correct) s2Correct++;
+    else s2Wrong++;
+  });
+  const s2Points = Math.round((s2Correct*RULE.correct + s2Wrong*RULE.wrong)*100)/100;
+  const gt = answers.gambleTask || {};
+  const gamblePoints = Number(gt.points) || 0;
+  const s2TotalPoints = Math.round((s2Points + gamblePoints)*100)/100;
+  const stage2Pay = Math.round(s2TotalPoints*RULE.rsPerPoint*100)/100;
+  let gambleText = '';
+  if(gt.randomlySelectedRow !== undefined){
+    gambleText = ` Section 6: row ${gt.randomlySelectedRow+1} (${gt.selectedWinPct}% chance to win) was selected. ` +
+      (gt.selectedDecision === 'Decline'
+        ? 'You had declined it, so it adds 0 points.'
+        : `You had accepted it; the option was played out (random draw ${gt.randomDraw} out of 100, needed to be below ${gt.selectedWinPct} to win) and you ${gt.outcome==='win'?'won':'lost'}, so it adds ${ptsStr(gamblePoints)} ${ptWord(gamblePoints)}.`);
+  }
+  breakdown.push({
+    section: 'Sections 4 and 6 · Stage 2 Assessment and Section 6 (points)',
+    calc: `Section 4: ${s2Correct} correct × ${ptsStr(RULE.correct)}, ${s2Wrong} wrong × ${ptsStr(RULE.wrong)}, ${s2Blank} skipped or unanswered × 0 = ${s2Points} ${ptWord(s2Points)}.${gambleText} Total ${s2TotalPoints} ${ptWord(s2TotalPoints)} × Rs. ${RULE.rsPerPoint} per point = ${fmtRs(stage2Pay)}`,
+    amount: stage2Pay
+  });
+
+  // Section 4: estimate of own Stage 2 correct answers (Rs. 20 if within one)
+  const estimate2 = answers.confidenceStage2 ? Number(answers.confidenceStage2.absoluteEstimate) : NaN;
+  const estimate2Hit = Number.isFinite(estimate2) && Math.abs(estimate2 - s2Correct) <= 1;
+  const estimate2Pay = estimate2Hit ? 20 : 0;
+  breakdown.push({
+    section: 'Section 4 · Estimate of Your Score',
+    calc: `You estimated ${Number.isFinite(estimate2)?estimate2:'-'} correct; you actually answered ${s2Correct} correctly. ${estimate2Hit ? 'Your estimate was within one, so you earn Rs. 20.' : 'Your estimate was not within one, so you earn Rs. 0.'}`,
+    amount: estimate2Pay
+  });
+
+  // Section 5: Stage 3
+  const s3 = answers.stage3 || {};
+  const s3NewPay = s3.newAnswerPayTotal || 0;
+  const s3ConfPay = s3.confidencePayTotal || 0;
+  breakdown.push({
+    section: 'Section 5 · Stage 3: Previously Unanswered Questions',
+    calc: (s3.newlyAnsweredCount ? `${s3.newlyAnsweredCorrect} of the ${s3.newlyAnsweredCount} question(s) you skipped or did not reach in Section 4 answered correctly × Rs. ${STAGE3_NEW_ANSWER_PAY} = Rs. ${s3NewPay}` : 'You answered every Section 4 question, so there were no new answers to pay.'),
+    amount: s3NewPay
+  });
+  breakdown.push({
+    section: 'Section 5 · Stage 3: Confidence',
+    calc: `The robot answered for you on ${s3.robotAnsweredCount||0} question(s) and your own answer counted on ${s3.ownAnswerCountedCount!=null ? s3.ownAnswerCountedCount : 10-(s3.robotAnsweredCount||0)}.${s3.incompleteCount ? ` ${s3.incompleteCount} question(s) were left incomplete when time ran out and earn Rs. 0.` : ''} You won Rs. ${STAGE3_WIN_AMOUNT} on ${s3.confidenceWins||0} of 10 questions.`,
+    amount: s3ConfPay
+  });
+
+  const total = Math.round((FIXED_FEE + stage1Pay + estimatePay + taskAPay + taskBPay + stage2Pay + estimate2Pay + s3NewPay + s3ConfPay)*100)/100;
 
   answers.earnings = {
     fixedFee: FIXED_FEE,
-    stage1: { correctCount: stage1Correct, pay: stage1Pay, confidenceBonus: stage1ConfidenceBonus },
+    stage1: { correctCount: stage1Correct, pay: stage1Pay },
+    estimate: { estimate: estimate, stage1Correct: stage1Correct, pay: estimatePay },
+    stage2: { condition: R.condition, correct: s2Correct, wrong: s2Wrong, blank: s2Blank, points: s2Points, gamblePoints: gamblePoints, totalPoints: s2TotalPoints, rsPerPoint: RULE.rsPerPoint, pay: stage2Pay },
+    estimateStage2: { estimate: estimate2, stage2Correct: s2Correct, pay: estimate2Pay },
+    stage3: { newAnswerPay: s3NewPay, confidencePay: s3ConfPay },
     taskA: { pay: taskAPay },
     taskB: { pay: taskBPay },
     breakdown: breakdown,
-    total: total,
-    note: `This total includes ${includedList.join(', ')}. Other bonuses (${excludedList.join(', ')}) are determined by the experimenter after the full session.`
+    total: total
   };
   return answers.earnings;
 }
@@ -1475,11 +1818,11 @@ function computeEarnings(){
 ===================================================================== */
 flow.length = sidx;
 if(jumpToIndex !== undefined && jumpToIndex !== null){
+  if(jumpToIndex === SEC_STAGE3) renderStage3();
   goTo(jumpToIndex);
   if(jumpToIndex === SEC_STAGE1) beginStage1();
-  else if(jumpToIndex === SEC_ROUND1) beginRound1();
-  else if(jumpToIndex === SEC_ROUND2) beginRound2();
   else if(jumpToIndex === SEC_STAGE2) beginStage2();
+  else if(jumpToIndex === SEC_STAGE3) beginStage3();
 } else {
   goTo(SEC_STAGE1);
   beginStage1();
@@ -1583,7 +1926,8 @@ window.updateCalculatorVisibility = function (section) {
   // Only show the calculator on the subsequent page containing the actual questions.
   const isStage2Assessment = /Stage 2 Assessment/i.test(titleText) &&
     !!section.querySelector('[data-qid]');
-  const allowed = isStage1Assessment || isStage2Assessment;
+  const isStage3 = /Stage 3/i.test(titleText) && !!section.querySelector('[data-qid]');
+  const allowed = isStage1Assessment || isStage2Assessment || isStage3;
 
   calculator.classList.remove('visible');
   calculatorExpression = '';
@@ -1592,6 +1936,31 @@ window.updateCalculatorVisibility = function (section) {
   toggle.style.display = allowed ? 'block' : 'none';
   toggle.classList.toggle('visible', allowed);
   toggle.textContent = 'Open Calculator';
+  calcSectionAllowed = allowed;
+  applyCalculatorPageRule(section);
+};
+
+/* No calculator on verbal-ability questions (Part C) in Stages 1, 2 and 3.
+   Checked every time the visible question page changes. */
+let calcSectionAllowed = false;
+function isVerbalPage(page){
+  const pt = page && page.querySelector('.part-title');
+  return !!pt && /verbal/i.test(pt.textContent);
+}
+window.applyCalculatorPageRule = function (section) {
+  const calculator = document.getElementById('surveyCalculator');
+  const toggle = document.getElementById('calculatorToggle');
+  if (!calculator || !toggle || !section || !calcSectionAllowed) return;
+  const page = section.querySelector('.qpage.active');
+  if (isVerbalPage(page)) {
+    calculator.classList.remove('visible');
+    toggle.style.display = 'none';
+    toggle.classList.remove('visible');
+  } else if (!calculator.classList.contains('visible')) {
+    toggle.style.display = 'block';
+    toggle.classList.add('visible');
+    toggle.textContent = 'Open Calculator';
+  }
 };
 
 </script>
