@@ -1,4 +1,4 @@
-x<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -348,10 +348,19 @@ x<!DOCTYPE html>
 /* =====================================================================
    STATE + RANDOMIZATION
 ===================================================================== */
+function shuffledCopy(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
 const R = {
   pid: 'P' + Math.floor(Math.random()*900000+100000),
   condition: [1,2,3][Math.floor(Math.random()*3)],
-  startedAt: new Date().toISOString()
+  startedAt: new Date().toISOString(),
+  // A fresh random question order for each stage, drawn independently for every participant.
+  orderStage1: shuffledCopy(Array.from({length:10},(_,k)=>'S1Q'+(k+1))),
+  orderStage2: shuffledCopy(Array.from({length:10},(_,k)=>'S2Q'+(k+1))),
+  orderStage3: shuffledCopy(Array.from({length:10},(_,k)=>'S2Q'+(k+1)))   // Stage 3 re-shows Stage 2 questions
 };
 const answers = { meta: R, participant:{name:null,email:null}, demographics:{}, background:{},
                    stage1:{}, taskA:{}, taskB:{}, taskC:{}, comprehensionCheck:{},
@@ -462,7 +471,7 @@ function lockSurveyForTabSwitch(){
    Google Sheet, in addition to the local autosave. Leave it blank
    ('') to disable this and rely on local storage only.
 ===================================================================== */
-const GOOGLE_SHEET_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbw7xFByJmd3XTjiZtnx0Y2Mc9zjxSNZw9G9v3EUfRuy6rYLSH_B-cRsiZs_BU54-8CJ/exec';
+const GOOGLE_SHEET_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbxnfmb7oM2hqoMp1urN1cz792sdzyhW_4IVQRmlyGhPifnPNM1dFDXMaNOvMp9nWRQC/exec';
 function syncToGoogleSheet(){
   if(!GOOGLE_SHEET_WEBAPP_URL || !currentParticipantEmail) return;
   try{
@@ -537,14 +546,64 @@ function getProgressFor(email){
   const all = getAllProgress();
   return all[email] || null;
 }
+/* ---- In-section progress ("draft") so a resume lands on the exact page ----
+   Records, for the section currently on screen: which question page is open,
+   every choice/entry made so far, and when the section timer ends. */
+function inputKey(el, sec){
+  if(el.id) return '#'+el.id;
+  const same = Array.from(sec.querySelectorAll(`input[name="${el.name}"]`));
+  return el.name + '@' + same.indexOf(el);
+}
+function collectDraft(){
+  const sec = document.getElementById('sec_'+flowIndex);
+  if(!sec) return null;
+  const checked = [], values = {};
+  sec.querySelectorAll('input').forEach(el=>{
+    if(el.disabled) return;
+    if(el.type === 'radio' || el.type === 'checkbox'){ if(el.checked) checked.push({ key: inputKey(el, sec), type: el.type }); }
+    else if(el.value !== '') values[inputKey(el, sec)] = el.value;
+  });
+  return { flowIndex: flowIndex, pages: Object.assign({}, stagePageIndex), checked: checked, values: values, timerDeadline: timerDeadline };
+}
+function findInput(sec, key){
+  if(key[0] === '#') return sec.querySelector('#'+CSS.escape(key.slice(1)));
+  const at = key.lastIndexOf('@');
+  return sec.querySelectorAll(`input[name="${key.slice(0,at)}"]`)[Number(key.slice(at+1))] || null;
+}
+function restoreDraft(draft){
+  if(!draft || draft.flowIndex !== flowIndex) return;
+  const sec = document.getElementById('sec_'+flowIndex);
+  if(!sec) return;
+  // Replay choices as clicks so every handler (colours, question box, auto-fill) runs as normal.
+  // Answers first, then checkboxes (e.g. "Skip this question").
+  const order = (draft.checked||[]).filter(c=>c.type==='radio').concat((draft.checked||[]).filter(c=>c.type==='checkbox'));
+  order.forEach(c=>{ const el = findInput(sec, c.key); if(el && !el.checked && !el.disabled) el.click(); });
+  Object.keys(draft.values||{}).forEach(k=>{
+    const el = findInput(sec, k);
+    if(el && !el.disabled){ el.value = draft.values[k]; el.dispatchEvent(new Event('input', {bubbles:true})); }
+  });
+  Object.keys(draft.pages||{}).forEach(st=>{
+    if(sec.querySelector(`.qpage[data-stage="${st}"]`)) showStagePage(st, draft.pages[st]);
+  });
+}
+// Save in-section progress whenever anything is answered or typed.
+let draftSaveTimer = null;
+// (Only once the participant's email has been confirmed, so half-typed emails are never stored.)
+function emailConfirmed(){ return !!(answers.participant && answers.participant.email); }
+function queueDraftSave(){ if(!emailConfirmed()) return; clearTimeout(draftSaveTimer); draftSaveTimer = setTimeout(saveProgressSnapshot, 300); }
+document.addEventListener('change', queueDraftSave);
+document.addEventListener('input', queueDraftSave);
+window.addEventListener('pagehide', ()=>{ if(emailConfirmed()) saveProgressSnapshot(); });
+
 function saveProgressSnapshot(){
   if(!currentParticipantEmail) return;
   try{
     const all = getAllProgress();
     all[currentParticipantEmail] = {
-      R: { pid: R.pid, condition: R.condition, startedAt: R.startedAt },
+      R: { pid: R.pid, condition: R.condition, startedAt: R.startedAt, orderStage1: R.orderStage1, orderStage2: R.orderStage2, orderStage3: R.orderStage3 },
       answers: answers,
       flowIndex: flowIndex,
+      draft: collectDraft(),
       savedAt: new Date().toISOString(),
       completed: !!answers.completedAt
     };
@@ -563,18 +622,20 @@ function clearProgressFor(email){
    TIMER UTILITY
 ===================================================================== */
 let timerInterval = null;
+let timerDeadline = null;   // epoch ms when the running section timer ends (saved for resume)
 function startTimer(seconds, onTick, onExpire){
   clearInterval(timerInterval);
-  let remaining = seconds;
-  document.getElementById('clockDisplay').textContent = fmtTime(remaining);
+  timerDeadline = Date.now() + seconds*1000;
+  const left = ()=>Math.max(0, Math.ceil((timerDeadline - Date.now())/1000));
+  document.getElementById('clockDisplay').textContent = fmtTime(left());
   timerInterval = setInterval(()=>{
-    remaining--;
+    const remaining = left();
     document.getElementById('clockDisplay').textContent = fmtTime(remaining);
     if(onTick) onTick(remaining);
-    if(remaining<=0){ clearInterval(timerInterval); if(onExpire) onExpire(); }
+    if(remaining<=0){ clearInterval(timerInterval); timerDeadline = null; if(onExpire) onExpire(); }
   },1000);
 }
-function stopTimer(){ clearInterval(timerInterval); document.getElementById('clockDisplay').textContent=''; }
+function stopTimer(){ clearInterval(timerInterval); timerDeadline = null; document.getElementById('clockDisplay').textContent=''; }
 function fmtTime(s){ if(s<0) s=0; const m=Math.floor(s/60), sec=s%60; return m+':'+String(sec).padStart(2,'0'); }
 
 /* =====================================================================
@@ -658,6 +719,7 @@ window.showStagePage = function(stageKey, idx){
   pages.forEach(p=>p.classList.toggle('active', Number(p.dataset.page)===idx));
   stagePageIndex[stageKey] = idx;
   updateQNav();
+  if (typeof saveProgressSnapshot === 'function') saveProgressSnapshot();
   if (typeof applyCalculatorPageRule === 'function') applyCalculatorPageRule(pages[0].closest('.section'));
   window.scrollTo(0,0);
 };
@@ -730,12 +792,12 @@ function setRadioAnswer(qid, idx){
    Drawn from the study's original item pool per the Sample Questionnaire.
 ===================================================================== */
 const STAGE1_QUESTIONS = [
- {id:'S1Q1', num:1, part:'Part A: Quantitative Reasoning', text:'Let n and m be two positive integers such that there are exactly 41 integers greater than 8<sup>m</sup> and less than 8<sup>n</sup>, which can be expressed as powers of 2. Then, the smallest possible value of n + m is:', opts:['14','42','16','44'], ans:2},
- {id:'S1Q2', num:2, part:'Part A: Quantitative Reasoning', text:'A club has 256 members of whom 144 can play football, 123 can play tennis, and 132 can play cricket. Moreover, 58 members can play both football and tennis, 25 can play both cricket and tennis, while 63 can play both football and cricket. If every member can play at least one game, then the number of members who can play only tennis is:', opts:['32','43','38','45'], ans:1},
- {id:'S1Q3', num:3, part:'Part A: Quantitative Reasoning', text:'Five students, including Amit, appear for an examination in which possible marks are integers between 0 and 50, both inclusive. The average marks for all the students is 38 and exactly three students got more than 32. If no two students got the same marks and Amit got the least marks among the five students, then the difference between the highest and lowest possible marks of Amit is:', opts:['21','24','20','22'], ans:2},
- {id:'S1Q4', num:4, part:'Part A: Quantitative Reasoning', text:'If f(5 + x) = f(5 \u2212 x) for every real x and f(x) = 0 has four distinct real roots, then the sum of the roots is:', opts:['0','40','10','20'], ans:3},
- {id:'S1Q5', num:5, part:'Part B: Data Interpretation and Logical Reasoning', text:'Y is in the east of X, which is in the north of Z. If P is in the south of Z, then in which direction of Y, is P?', opts:['North','South','South-West','None'], ans:2},
- {id:'S1Q6', num:6, part:'Part B: Data Interpretation and Logical Reasoning', html:`<div style="text-align:center;font-weight:600;font-size:13px;margin-bottom:6px;">M/s Mega Corp Limited: Number of Workers Employed and Units Shipped</div>
+ {id:'S1Q1', num:1, part:'Quantitative Reasoning', text:'Let n and m be two positive integers such that there are exactly 41 integers greater than 8<sup>m</sup> and less than 8<sup>n</sup>, which can be expressed as powers of 2. Then, the smallest possible value of n + m is:', opts:['14','42','16','44'], ans:2},
+ {id:'S1Q2', num:2, part:'Quantitative Reasoning', text:'A club has 256 members of whom 144 can play football, 123 can play tennis, and 132 can play cricket. Moreover, 58 members can play both football and tennis, 25 can play both cricket and tennis, while 63 can play both football and cricket. If every member can play at least one game, then the number of members who can play only tennis is:', opts:['32','43','38','45'], ans:1},
+ {id:'S1Q3', num:3, part:'Quantitative Reasoning', text:'Five students, including Amit, appear for an examination in which possible marks are integers between 0 and 50, both inclusive. The average marks for all the students is 38 and exactly three students got more than 32. If no two students got the same marks and Amit got the least marks among the five students, then the difference between the highest and lowest possible marks of Amit is:', opts:['21','24','20','22'], ans:2},
+ {id:'S1Q4', num:4, part:'Quantitative Reasoning', text:'If f(5 + x) = f(5 \u2212 x) for every real x and f(x) = 0 has four distinct real roots, then the sum of the roots is:', opts:['0','40','10','20'], ans:3},
+ {id:'S1Q5', num:5, part:'Data Interpretation and Logical Reasoning', text:'Y is in the east of X, which is in the north of Z. If P is in the south of Z, then in which direction of Y, is P?', opts:['North','South','South-West','None'], ans:2},
+ {id:'S1Q6', num:6, part:'Data Interpretation and Logical Reasoning', html:`<div style="text-align:center;font-weight:600;font-size:13px;margin-bottom:6px;">M/s Mega Corp Limited: Number of Workers Employed and Units Shipped</div>
    <div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin:6px 0 10px;">
    <svg width="300" height="270" viewBox="0 0 340 300" style="background:#fff;border:1px solid var(--rule);">
      <text x="170" y="14" text-anchor="middle" font-size="12" font-weight="600" fill="#1c2b2d">Number of Workers Employed</text>
@@ -789,26 +851,26 @@ const STAGE1_QUESTIONS = [
    </svg>
    </div>
    By what per cent did the number of temporary workers employed by M/s Mega Corp Limited increase from April 1 to May 1?`, opts:['40%','25%','20%','12%'], ans:0},
- {id:'S1Q7', num:7, part:'Part B: Data Interpretation and Logical Reasoning', html:`The table below presents the revenue (in million rupees) of four firms in three states. These firms, Honest Ltd., Aggressive Ltd., Truthful Ltd. and Profitable Ltd. are disguised in the table as A, B, C and D, in no particular order.
+ {id:'S1Q7', num:7, part:'Data Interpretation and Logical Reasoning', html:`The table below presents the revenue (in million rupees) of four firms in three states. These firms, Honest Ltd., Aggressive Ltd., Truthful Ltd. and Profitable Ltd. are disguised in the table as A, B, C and D, in no particular order.
    <table class="datatable"><tr><th>States</th><th>Firm A</th><th>Firm B</th><th>Firm C</th><th>Firm D</th></tr>
    <tr><td>UP</td><td>49</td><td>82</td><td>80</td><td>55</td></tr>
    <tr><td>Bihar</td><td>69</td><td>72</td><td>70</td><td>65</td></tr>
    <tr><td>MP</td><td>72</td><td>63</td><td>72</td><td>65</td></tr></table>
    Further, it is known that: in the state of MP, Truthful Ltd. has the highest market share; and Aggressive Ltd.\u2019s aggregate revenue differs from Honest Ltd.\u2019s by Rs. 5 million.<br><br>
    Statement 1: Profitable Ltd. has the lowest share in MP market.<br>Statement 2: Honest Ltd.\u2019s total revenue is more than Profitable Ltd.<br>What can be said regarding the two statements?`, opts:['If Statement 1 is true then Statement 2 is necessarily true.','If Statement 1 is true then Statement 2 is necessarily false.','Both Statement 1 and Statement 2 are true.','Neither Statement 1 nor Statement 2 is true.'], ans:1},
- {id:'S1Q8', num:8, part:'Part C: Verbal Analysis', html:`In the following question, there are five sentences or parts of sentences that form a paragraph. Identify the sentence(s) or part(s) of sentence(s) that is/are correct in terms of grammar and usage. Then, choose the most appropriate option.<br>
+ {id:'S1Q8', num:8, part:'Verbal Analysis', html:`In the following question, there are five sentences or parts of sentences that form a paragraph. Identify the sentence(s) or part(s) of sentence(s) that is/are correct in terms of grammar and usage. Then, choose the most appropriate option.<br>
    A. So once an economy is actually in a recession,<br>
    B. the authorities can, in principle, move the economy<br>
    C. out of slump \u2013 assuming hypothetically<br>
    D. that they know how to \u2013 by a temporary stimuli.<br>
    E. In the longer term, however, such polices have no affect on the overall behaviour of the economy.`, opts:['A, B & E','B, C & E','C & D','B only'], ans:3},
- {id:'S1Q9', num:9, part:'Part C: Verbal Analysis', html:`Choose the correct word for each pair:<br>
+ {id:'S1Q9', num:9, part:'Verbal Analysis', html:`Choose the correct word for each pair:<br>
    1. The further/farther he pushed himself, the more disillusioned he grew.<br>
    2. For the crowds it was more of a historical/historic event; for their leader, it was just another day.<br>
    3. The old man has a healthy distrust/mistrust for all new technology.<br>
    4. This film is based on a real/true story.<br>
    5. One suspects that the compliment/complement was backhanded.`, opts:['B A B A B','A B B B A','B A A B A','A B A B A'], ans:3},
- {id:'S1Q10', num:10, part:'Part C: Verbal Analysis', html:`Five sentences related to a topic are given below. Four of them can be put together to form a meaningful and coherent short paragraph. Identify and choose the odd one out.<br>
+ {id:'S1Q10', num:10, part:'Verbal Analysis', html:`Five sentences related to a topic are given below. Four of them can be put together to form a meaningful and coherent short paragraph. Identify and choose the odd one out.<br>
    1. People who study children\u2019s language spend a lot of time watching how babies react to the speech they hear around them.<br>
    2. They make films of adults and babies interacting, and examine them very carefully to see whether the babies show any signs of understanding what the adults say.<br>
    3. They believe that babies begin to react to language from the very moment they are born.<br>
@@ -817,15 +879,15 @@ const STAGE1_QUESTIONS = [
 ];
 
 const STAGE2_QUESTIONS = [
- {id:'S2Q1', num:1, part:'Part A: Quantitative Reasoning', html:`If <span class="frac"><span class="num">a</span><span class="den">b</span></span> = <span class="frac"><span class="num">1</span><span class="den">3</span></span>, <span class="frac"><span class="num">b</span><span class="den">c</span></span> = 2, <span class="frac"><span class="num">c</span><span class="den">d</span></span> = <span class="frac"><span class="num">1</span><span class="den">2</span></span>, <span class="frac"><span class="num">d</span><span class="den">e</span></span> = 3 and <span class="frac"><span class="num">e</span><span class="den">f</span></span> = <span class="frac"><span class="num">1</span><span class="den">4</span></span>, then what is the value of <span class="frac"><span class="num">abc</span><span class="den">def</span></span>?`, opts:['1/4','3/4','3/8','27/4'], ans:2},
- {id:'S2Q2', num:2, part:'Part A: Quantitative Reasoning', html:'What are the values of x and y that satisfy the equation: 2<sup>0.7x</sup>\u00b73<sup>\u22121.25y</sup> = <span class=\"frac\"><span class=\"num\">8\u221a6</span><span class=\"den\">27</span></span>, and<br>4<sup>0.3x</sup>\u00b79<sup>0.2y</sup> = 8\u00b7(81)<sup><span class=\"frac\" style=\"font-size:0.6em;top:0;\"><span class=\"num\">1</span><span class=\"den\">5</span></span></sup> ?', opts:['x = 2.5, y = 6','x = 3, y = 5','x = 3, y = 4','x = 5, y = 2'], ans:3},
- {id:'S2Q3', num:3, part:'Part A: Quantitative Reasoning', text:'The area of a rectangle and the square of its perimeter are in the ratio 1:25. Then the lengths of the shorter and longer sides of the rectangle are in the ratio:', opts:['3:8','2:9','1:4','1:3'], ans:2},
- {id:'S2Q4', num:4, part:'Part A: Quantitative Reasoning', text:'The female to male ratio for Cycling athletes from Russia and USA was 1:19 and 4:1 respectively. If the number of female Cycling athletes was equal to the number of male Cycling athletes for the three countries put together, then what was the number of female Cycling athletes from China?', opts:['4','96','66','None of these'], ans:2},
- {id:'S2Q5', num:5, part:'Part B: Data Interpretation and Logical Reasoning', html:`According to a coding scheme the sentence <b>Peacock is designated as the national bird of India</b> is coded as:<br>
+ {id:'S2Q1', num:1, part:'Quantitative Reasoning', html:`If <span class="frac"><span class="num">a</span><span class="den">b</span></span> = <span class="frac"><span class="num">1</span><span class="den">3</span></span>, <span class="frac"><span class="num">b</span><span class="den">c</span></span> = 2, <span class="frac"><span class="num">c</span><span class="den">d</span></span> = <span class="frac"><span class="num">1</span><span class="den">2</span></span>, <span class="frac"><span class="num">d</span><span class="den">e</span></span> = 3 and <span class="frac"><span class="num">e</span><span class="den">f</span></span> = <span class="frac"><span class="num">1</span><span class="den">4</span></span>, then what is the value of <span class="frac"><span class="num">abc</span><span class="den">def</span></span>?`, opts:['1/4','3/4','3/8','27/4'], ans:2},
+ {id:'S2Q2', num:2, part:'Quantitative Reasoning', html:'What are the values of x and y that satisfy the equation: 2<sup>0.7x</sup>\u00b73<sup>\u22121.25y</sup> = <span class=\"frac\"><span class=\"num\">8\u221a6</span><span class=\"den\">27</span></span>, and<br>4<sup>0.3x</sup>\u00b79<sup>0.2y</sup> = 8\u00b7(81)<sup><span class=\"frac\" style=\"font-size:0.6em;top:0;\"><span class=\"num\">1</span><span class=\"den\">5</span></span></sup> ?', opts:['x = 2.5, y = 6','x = 3, y = 5','x = 3, y = 4','x = 5, y = 2'], ans:3},
+ {id:'S2Q3', num:3, part:'Quantitative Reasoning', text:'The area of a rectangle and the square of its perimeter are in the ratio 1:25. Then the lengths of the shorter and longer sides of the rectangle are in the ratio:', opts:['3:8','2:9','1:4','1:3'], ans:2},
+ {id:'S2Q4', num:4, part:'Quantitative Reasoning', text:'The female to male ratio for Cycling athletes from Russia and USA was 1:19 and 4:1 respectively. If the number of female Cycling athletes was equal to the number of male Cycling athletes for the three countries put together, then what was the number of female Cycling athletes from China?', opts:['4','96','66','None of these'], ans:2},
+ {id:'S2Q5', num:5, part:'Data Interpretation and Logical Reasoning', html:`According to a coding scheme the sentence <b>Peacock is designated as the national bird of India</b> is coded as:<br>
    <code>5688999 35 1135556678 56 458 13666689 1334 79 13366</code><br>
    This coding scheme has the following rules: it is case-insensitive; each letter has a unique code which is a single digit from 1\u20139; the digit 9 codes two letters, and every other digit codes three letters; the code for a word is constructed by arranging the digits corresponding to its letters in a non-decreasing sequence.<br>
    What best can be concluded about the code for the letter L?`, opts:['6','8','1 or 8','1'], ans:2},
- {id:'S2Q6', num:6, part:'Part B: Data Interpretation and Logical Reasoning', html:`A health-drink company\u2019s R&amp;D department is trying to make various diet formulations from 5 alternative ingredients (O, P, Q, R, S). The table below gives the composition of these ingredients. The cost per unit of each is O: 150, P: 50, Q: 200, R: 500, S: 100.
+ {id:'S2Q6', num:6, part:'Data Interpretation and Logical Reasoning', html:`A health-drink company\u2019s R&amp;D department is trying to make various diet formulations from 5 alternative ingredients (O, P, Q, R, S). The table below gives the composition of these ingredients. The cost per unit of each is O: 150, P: 50, Q: 200, R: 500, S: 100.
    <table class="datatable"><tr><th>Ingredient</th><th>Carbohydrate%</th><th>Protein%</th><th>Fat%</th><th>Minerals%</th></tr>
    <tr><td>O</td><td>50</td><td>30</td><td>10</td><td>10</td></tr>
    <tr><td>P</td><td>80</td><td>20</td><td>0</td><td>0</td></tr>
@@ -833,22 +895,32 @@ const STAGE2_QUESTIONS = [
    <tr><td>R</td><td>5</td><td>50</td><td>40</td><td>5</td></tr>
    <tr><td>S</td><td>45</td><td>50</td><td>0</td><td>5</td></tr></table>
    In what proportion should P, Q and S be mixed to make a diet having at least 60% carbohydrate at the lowest cost per unit?`, opts:['2:1:3','4:1:2','2:1:4','4:1:1'], ans:3},
- {id:'S2Q7', num:7, part:'Part B: Data Interpretation and Logical Reasoning', html:`In a hockey match, the Indian team was behind by 2 goals with 5 min remaining. Did they win the match?<br>
+ {id:'S2Q7', num:7, part:'Data Interpretation and Logical Reasoning', html:`In a hockey match, the Indian team was behind by 2 goals with 5 min remaining. Did they win the match?<br>
    i. Deepak Thakur, the Indian striker, scored 3 goals in the last 5 min of the match.<br>
    ii. Korea scored a total of 3 goals in the match.`, opts:['The question can be answered by one of the statements alone but not by the other.','The question can be answered by using either statement alone.','The question can be answered by using both the statements together, but cannot be answered by using either statement alone.','The question cannot be answered by either of the statements.'], ans:2},
- {id:'S2Q8', num:8, part:'Part C: Verbal Ability', html:`The sentences given below, when properly sequenced, form a coherent paragraph. Each sentence is labeled with a letter. Choose the most logical order of sentences to construct a coherent paragraph.<br>
+ {id:'S2Q8', num:8, part:'Verbal Ability', html:`The sentences given below, when properly sequenced, form a coherent paragraph. Each sentence is labeled with a letter. Choose the most logical order of sentences to construct a coherent paragraph.<br>
    A. This is now orthodoxy to which I subscribe \u2013 up to a point.<br>
    B. It emerged from the mathematics of chance and statistics.<br>
    C. Therefore the risk is measurable and manageable.<br>
    D. The fundamental concept: Prices are not predictable, but the mathematical laws of chance can describe their fluctuations.<br>
    E. This is how what business schools now call modern finance was born.`, opts:['A D C B E','E B D C A','A B D C E','D C B E A'], ans:1},
- {id:'S2Q9', num:9, part:'Part C: Verbal Ability', text:'As navigators, calendar makers, and other ___ of the night sky accumulated evidence to the contrary, ancient astronomers were forced to ___ that certain bodies might move in circles about points, which in turn moved in circles about the earth.', opts:['scrutinizers; believe','observers; agree','scrutinizers; suggest','observers; concede'], ans:3},
- {id:'S2Q10', num:10, part:'Part C: Verbal Ability', html:`Choose the option that points out sentence(s) with grammatical error(s):<br>
+ {id:'S2Q9', num:9, part:'Verbal Ability', text:'As navigators, calendar makers, and other ___ of the night sky accumulated evidence to the contrary, ancient astronomers were forced to ___ that certain bodies might move in circles about points, which in turn moved in circles about the earth.', opts:['scrutinizers; believe','observers; agree','scrutinizers; suggest','observers; concede'], ans:3},
+ {id:'S2Q10', num:10, part:'Verbal Ability', html:`Choose the option that points out sentence(s) with grammatical error(s):<br>
    I. I love the man\u2019s dancing on the table.<br>
    II. In 1986 Elie Wiesel was named the Nobel Peace Prize recipient, an honour established by Alfred Nobel.<br>
    III. Neither of the recommendations works as well as we thought they would.<br>
    IV. Either the Minister or the Minister\u2019s wife will have to excuse themselves from the reception to speak to the caterer.`, opts:['I and V','I and IV','II and V','III and IV'], ans:3}
 ];
+
+/* Returns the questions in this participant's random order. Each copy's "num"
+   is its displayed position (1-10); "id" keeps the original question identity,
+   which is what all answers and payments are recorded against. */
+function orderedQuestions(list, order){
+  const byId = {}; list.forEach(q=>{ byId[q.id] = q; });
+  const ok = Array.isArray(order) && order.length === list.length && order.every(id=>byId[id]);
+  const ids = ok ? order : list.map(q=>q.id);
+  return ids.map((id,pos)=>Object.assign({}, byId[id], { num: pos+1 }));
+}
 
 /* =====================================================================
    BUILD SECTIONS (eager: General Instructions, Participant Details,
@@ -934,7 +1006,7 @@ window.resumeSavedProgress = function(){
   tabSwitchCount = (answers.tabSwitchEvents||[]).length;
   currentParticipantEmail = pendingResume.email;
   document.getElementById('resumeOverlay').style.display = 'none';
-  buildMainFlowAndGo(snap.flowIndex);
+  buildMainFlowAndGo(snap.flowIndex, snap.draft || null);
 };
 
 // ---------- SECTION 1: BACKGROUND INFORMATION ----------
@@ -990,14 +1062,14 @@ window.finishBackground = function(){
   buildMainFlowAndGo();
 };
 
-function buildMainFlowAndGo(jumpToIndex){
+function buildMainFlowAndGo(jumpToIndex, resumeDraft){
 if(mainFlowBuilt){ if(jumpToIndex !== undefined && jumpToIndex !== null){ goTo(jumpToIndex); } return; }
 mainFlowBuilt = true;
 
 // ---------- SECTION 2: STAGE 1 ABILITY ASSESSMENT ----------
 addSection(sidx, `
   <h1 class="sec-title">Section 2 &middot; Stage 1 Assessment</h1>
-  ${renderPagedMCQ('stage1', STAGE1_QUESTIONS, {allowSkip:false}, 'finishStage1', 'Submit Section 2', `
+  ${renderPagedMCQ('stage1', orderedQuestions(STAGE1_QUESTIONS, R.orderStage1), {allowSkip:false}, 'finishStage1', 'Submit Section 2', `
   <div class="instructions">
     This section contains 10 multiple-choice questions spanning three areas: Quantitative Reasoning, Data Interpretation and Logical Reasoning, and Verbal Ability. For each question, select the single best answer by choosing any one of the four options A, B, C, or D.
     <br><b>Payment rule:</b> You earn Rs. 15 for each correct answer. Incorrect answers and skipped questions earn Rs. 0. Since there is no penalty for incorrect answers, you should attempt every question.
@@ -1005,7 +1077,7 @@ addSection(sidx, `
   </div>`)}
 `);
 const SEC_STAGE1 = sidx; sidx++;
-function beginStage1(){ startTimer(18*60, null, ()=>{ finishStage1(true); }); }
+function beginStage1(sec){ startTimer(sec!=null ? sec : 18*60, null, ()=>{ finishStage1(true); }); }
 window.finishStage1 = function(auto){
   stopTimer();
   const {result} = collectMCQ(STAGE1_QUESTIONS);
@@ -1046,13 +1118,36 @@ window.finishConfidence = function(){
 
 
 // ---------- SECTION 3: DECISION TASKS ----------
+/* Shared rule for the choice tables (Task A, Task B, Section 6):
+   choosing the second option (Option B / Reject / Decline) in a row also selects it for
+   every row below. The first option can be chosen (or switched back to) only if no row
+   above has the second option, so the second option is never followed by the first. */
+function monotoneTableChoice(prefix, nRows, i, idx, flagId, firstLabel, secondLabel){
+  const msg = document.getElementById(flagId);
+  if(msg) msg.style.display = 'none';
+  const rowVal = k => document.querySelector(`[data-qid="${prefix}${k}"]`).dataset.answered;
+  if(idx === 0){
+    let blocker = -1;
+    for(let k=0;k<i;k++){ if(rowVal(k) === '1'){ blocker = k; break; } }
+    if(blocker !== -1){
+      const prev = rowVal(i);   // undo this click
+      document.querySelectorAll(`[data-qid="${prefix}${i}"] input[type=radio]`)
+        .forEach((r,ri)=>{ r.checked = (prev !== undefined && prev !== '' && Number(prev) === ri); });
+      if(msg){
+        msg.textContent = `You chose ${secondLabel} in row ${blocker+1}, so every row below it is also ${secondLabel}. To choose ${firstLabel} in row ${i+1}, first change row ${blocker+1} to ${firstLabel}.`;
+        msg.style.display = 'block';
+      }
+      return;
+    }
+    setRadioAnswer(prefix+i, 0);
+  } else {
+    for(let k=i;k<nRows;k++) setRadioAnswer(prefix+k, 1);
+  }
+}
 // Task A: Risk Preferences
 const taskAProbs = [10,20,30,40,50,60,70,80,90,100];
 window.taskAChoice = function(rowIndex, idx){
-  setRadioAnswer('taskA_'+rowIndex, idx);
-  if(idx === 1){
-    for(let j = rowIndex+1; j < taskAProbs.length; j++){ setRadioAnswer('taskA_'+j, 1); }
-  }
+  monotoneTableChoice('taskA_', taskAProbs.length, rowIndex, idx, 'taskAOrderFlag', 'Option A', 'Option B');
 };
 addSection(sidx, `
   <h1 class="sec-title">Section 3 &middot; Decision Tasks</h1>
@@ -1072,6 +1167,7 @@ addSection(sidx, `
       </tr>`).join('')}
     </tbody>
   </table>
+  <div class="flag" id="taskAOrderFlag" style="display:none;"></div>
   <div class="flag" id="taskAFlag" style="display:none;">Please answer every row before continuing.</div>
   <div class="navrow"><button onclick="finishTaskA()">Continue to Task B</button></div>
 `);
@@ -1113,10 +1209,7 @@ window.finishTaskA = function(){
 // Task B: Loss Aversion
 const taskBLosses = [20,30,40,50,60,70];
 window.taskBChoice = function(rowIndex, idx){
-  setRadioAnswer('taskB_'+rowIndex, idx);
-  if(idx === 1){
-    for(let j = rowIndex+1; j < taskBLosses.length; j++){ setRadioAnswer('taskB_'+j, 1); }
-  }
+  monotoneTableChoice('taskB_', taskBLosses.length, rowIndex, idx, 'taskBOrderFlag', 'Accept', 'Reject');
 };
 addSection(sidx, `
   <h1 class="sec-title">Task B</h1>
@@ -1135,6 +1228,7 @@ addSection(sidx, `
       </tr>`).join('')}
     </tbody>
   </table>
+  <div class="flag" id="taskBOrderFlag" style="display:none;"></div>
   <div class="flag" id="taskBFlag" style="display:none;">Please answer every row before continuing.</div>
   <div class="navrow"><button onclick="finishTaskB()">Continue</button></div>
 `);
@@ -1288,10 +1382,10 @@ addSection(sidx, `
     Each of the 10 questions appears on its own page. For each question, choose any one of the 4 options A, B, C, D OR tick the Skip box. Do not leave any question entirely blank.
     <br><b>Time allowed: 18 minutes.</b> Each point is worth Rs. ${RULE.rsPerPoint}.
   </div>
-  ${renderPagedMCQ('stage2', STAGE2_QUESTIONS, {allowSkip:true}, 'finishStage2', 'Submit Section 4', '', RULE_BANNER)}
+  ${renderPagedMCQ('stage2', orderedQuestions(STAGE2_QUESTIONS, R.orderStage2), {allowSkip:true}, 'finishStage2', 'Submit Section 4', '', RULE_BANNER)}
 `);
 const SEC_STAGE2 = sidx; sidx++;
-function beginStage2(){ startTimer(18*60, null, ()=>finishStage2(true)); }
+function beginStage2(sec){ startTimer(sec!=null ? sec : 18*60, null, ()=>finishStage2(true)); }
 window.finishStage2 = function(auto){
   stopTimer();
   const {result} = collectMCQ(STAGE2_QUESTIONS);
@@ -1358,8 +1452,9 @@ function stage2StatusFor(q){
 }
 function renderStage3(){
   const letters = ['A','B','C','D'];
-  const n = STAGE2_QUESTIONS.length;
-  const html = STAGE2_QUESTIONS.map((q,i)=>{
+  const STAGE3_LIST = orderedQuestions(STAGE2_QUESTIONS, R.orderStage3);
+  const n = STAGE3_LIST.length;
+  const html = STAGE3_LIST.map((q,i)=>{
     const st = stage2StatusFor(q);
     const qid = q.id + '_s3';
     const locked = st.status === 'answered';
@@ -1396,7 +1491,7 @@ function renderStage3(){
   stagePageIndex.stage3 = 0;
 }
 function stage3PageProblem(i){
-  const q = STAGE2_QUESTIONS[i];
+  const q = orderedQuestions(STAGE2_QUESTIONS, R.orderStage3)[i];
   const card = document.querySelector(`[data-qid="${q.id}_s3"]`);
   const ans = card ? card.dataset.answered : undefined;
   if(ans === undefined || ans === '') return 'Please choose an answer for this question.';
@@ -1413,7 +1508,7 @@ window.stage3Next = function(i){
   showStagePage('stage3', i+1);
 };
 const STAGE3_TIME_LIMIT_SEC = 8*60;
-function beginStage3(){ startTimer(STAGE3_TIME_LIMIT_SEC, null, ()=>finishStage3(true)); }
+function beginStage3(sec){ startTimer(sec!=null ? sec : STAGE3_TIME_LIMIT_SEC, null, ()=>finishStage3(true)); }
 window.enterStage3 = function(){
   renderStage3();
   goTo(SEC_STAGE3);
@@ -1510,15 +1605,21 @@ addSection(sidx, `
       <tr data-qid="gamble_${i}">
         <td class="rownum">${i+1}</td>
         <td>${g}% chance you win ${ptsStr(RULE.correct)} ${ptWord(RULE.correct)}, ${100-g}% chance you lose ${Math.abs(RULE.wrong)} ${ptWord(RULE.wrong)}</td>
-        <td class="opts"><label><input type="radio" name="gamble_${i}" onchange="setRadioAnswer('gamble_${i}',0)"></label></td>
-        <td class="opts"><label><input type="radio" name="gamble_${i}" onchange="setRadioAnswer('gamble_${i}',1)"></label></td>
+        <td class="opts"><label><input type="radio" name="gamble_${i}" onchange="gambleChoice(${i},0)"></label></td>
+        <td class="opts"><label><input type="radio" name="gamble_${i}" onchange="gambleChoice(${i},1)"></label></td>
       </tr>`).join('')}
     </tbody>
   </table>
+  <div class="flag" id="gambleOrderFlag" style="display:none;"></div>
   <div class="flag" id="gambleFlag" style="display:none;">Please answer every row before continuing.</div>
   <div class="navrow"><button onclick="finishGambleTask()">Continue</button></div>
 `);
 const SEC_GAMBLE = sidx; sidx++;
+// Decline on a row also declines every row below it. A row can be switched (back) to Accept
+// only if no row above it is declined, so a declined row is never followed by an accepted one.
+window.gambleChoice = function(i, idx){
+  monotoneTableChoice('gamble_', GAMBLE_PROBS.length, i, idx, 'gambleOrderFlag', 'Accept', 'Decline');
+};
 window.finishGambleTask = function(){
   let complete = true; const resp = {};
   GAMBLE_PROBS.forEach((g,i)=>{
@@ -1820,9 +1921,21 @@ flow.length = sidx;
 if(jumpToIndex !== undefined && jumpToIndex !== null){
   if(jumpToIndex === SEC_STAGE3) renderStage3();
   goTo(jumpToIndex);
-  if(jumpToIndex === SEC_STAGE1) beginStage1();
-  else if(jumpToIndex === SEC_STAGE2) beginStage2();
-  else if(jumpToIndex === SEC_STAGE3) beginStage3();
+  const draft = (resumeDraft && resumeDraft.flowIndex === jumpToIndex) ? resumeDraft : null;
+  restoreDraft(draft);
+  // The section clock keeps running while the participant is away; on resume she gets
+  // only the time that was left. If it ran out meanwhile, the section is submitted now
+  // with the answers she had given.
+  let secLeft = null;
+  if(draft && draft.timerDeadline) secLeft = Math.max(0, Math.ceil((draft.timerDeadline - Date.now())/1000));
+  const timed = { [SEC_STAGE1]: [beginStage1, ()=>finishStage1(true)],
+                  [SEC_STAGE2]: [beginStage2, ()=>finishStage2(true)],
+                  [SEC_STAGE3]: [beginStage3, ()=>finishStage3(true)] }[jumpToIndex];
+  if(timed){
+    if(secLeft === 0) timed[1]();
+    else timed[0](secLeft);
+  }
+  saveProgressSnapshot();
 } else {
   goTo(SEC_STAGE1);
   beginStage1();
