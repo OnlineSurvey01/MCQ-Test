@@ -695,7 +695,7 @@ function updateQNav(){
 }
 function renderPagedMCQ(stageKey, qArray, opts, submitFn, submitLabel, firstPageExtra, everyPageExtra){
   const n = qArray.length;
-  return renderQNav(stageKey, qArray, !!opts.allowSkip) + qArray.map((q,i)=>{
+  return (opts.noNav ? '' : renderQNav(stageKey, qArray, !!opts.allowSkip)) + qArray.map((q,i)=>{
     const prevBtn = (ALLOW_BACK_NAVIGATION && i>0)
       ? `<button type="button" class="secondary" onclick="showStagePage('${stageKey}',${i-1})">&larr; Previous</button>`
       : `<span></span>`;
@@ -797,7 +797,7 @@ const STAGE1_QUESTIONS = [
  {id:'S1Q3', num:3, part:'Quantitative Reasoning', text:'Five students, including Amit, appear for an examination in which possible marks are integers between 0 and 50, both inclusive. The average marks for all the students is 38 and exactly three students got more than 32. If no two students got the same marks and Amit got the least marks among the five students, then the difference between the highest and lowest possible marks of Amit is:', opts:['21','24','20','22'], ans:2},
  {id:'S1Q4', num:4, part:'Quantitative Reasoning', text:'If f(5 + x) = f(5 \u2212 x) for every real x and f(x) = 0 has four distinct real roots, then the sum of the roots is:', opts:['0','40','10','20'], ans:3},
  {id:'S1Q5', num:5, part:'Data Interpretation and Logical Reasoning', text:'Y is in the east of X, which is in the north of Z. If P is in the south of Z, then in which direction of Y, is P?', opts:['North','South','South-West','None'], ans:2},
- {id:'S1Q6', num:6, part:'Data Interpretation and Logical Reasoning', html:`<div style="text-align:center;font-weight:600;font-size:13px;margin-bottom:6px;">M/s Mega Corp Limited: Number of Workers Employed and Units Shipped</div>
+ {id:'S1Q6', num:6, part:'Data Interpretation and Logical Reasoning', html:`<div style="text-align:center;font-weight:600;font-size:13px;margin-bottom:6px;">M/s Mega Corp Limited: Number of Workers Employed</div>
    <div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin:6px 0 10px;">
    <svg width="300" height="270" viewBox="0 0 340 300" style="background:#fff;border:1px solid var(--rule);">
      <text x="170" y="14" text-anchor="middle" font-size="12" font-weight="600" fill="#1c2b2d">Number of Workers Employed</text>
@@ -826,29 +826,6 @@ const STAGE1_QUESTIONS = [
      <text x="233" y="264" font-size="9.5" text-anchor="middle" fill="#1c2b2d">April1</text>
      <text x="287" y="264" font-size="9.5" text-anchor="middle" fill="#1c2b2d">May1</text>
    </svg>
-   <svg width="300" height="270" viewBox="0 0 340 300" style="background:#fff;border:1px solid var(--rule);">
-     <text x="170" y="14" text-anchor="middle" font-size="12" font-weight="600" fill="#1c2b2d">Number of Units Shipped</text>
-     <text x="170" y="26" text-anchor="middle" font-size="10" fill="#555">(Monthly Totals)</text>
-     <line x1="50" y1="250" x2="310" y2="250" stroke="#999"/>
-     <line x1="50" y1="228" x2="310" y2="228" stroke="#e5e2d8"/>
-     <line x1="50" y1="206" x2="310" y2="206" stroke="#e5e2d8"/><text x="45" y="209" font-size="9" text-anchor="end" fill="#666">10000</text>
-     <line x1="50" y1="184" x2="310" y2="184" stroke="#e5e2d8"/>
-     <line x1="50" y1="162" x2="310" y2="162" stroke="#e5e2d8"/><text x="45" y="165" font-size="9" text-anchor="end" fill="#666">20000</text>
-     <line x1="50" y1="140" x2="310" y2="140" stroke="#e5e2d8"/>
-     <line x1="50" y1="118" x2="310" y2="118" stroke="#e5e2d8"/><text x="45" y="121" font-size="9" text-anchor="end" fill="#666">30000</text>
-     <line x1="50" y1="96" x2="310" y2="96" stroke="#e5e2d8"/>
-     <line x1="50" y1="74" x2="310" y2="74" stroke="#e5e2d8"/><text x="45" y="77" font-size="9" text-anchor="end" fill="#666">40000</text>
-     <line x1="50" y1="52" x2="310" y2="52" stroke="#e5e2d8"/>
-     <line x1="50" y1="30" x2="310" y2="30" stroke="#e5e2d8"/><text x="45" y="33" font-size="9" text-anchor="end" fill="#666">50000</text>
-     <text x="45" y="253" font-size="9" text-anchor="end" fill="#666">0</text>
-     <polyline points="60,206 120,140 180,162 240,118 300,74" fill="none" stroke="#333" stroke-width="2"/>
-     <circle cx="60" cy="206" r="3.5" fill="#333"/><circle cx="120" cy="140" r="3.5" fill="#333"/><circle cx="180" cy="162" r="3.5" fill="#333"/><circle cx="240" cy="118" r="3.5" fill="#333"/><circle cx="300" cy="74" r="3.5" fill="#333"/>
-     <text x="60" y="264" font-size="9.5" text-anchor="middle" fill="#1c2b2d">Jan</text>
-     <text x="120" y="264" font-size="9.5" text-anchor="middle" fill="#1c2b2d">Feb</text>
-     <text x="180" y="264" font-size="9.5" text-anchor="middle" fill="#1c2b2d">March</text>
-     <text x="240" y="264" font-size="9.5" text-anchor="middle" fill="#1c2b2d">April</text>
-     <text x="300" y="264" font-size="9.5" text-anchor="middle" fill="#1c2b2d">May</text>
-   </svg>
    </div>
    By what per cent did the number of temporary workers employed by M/s Mega Corp Limited increase from April 1 to May 1?`, opts:['40%','25%','20%','12%'], ans:0},
  {id:'S1Q7', num:7, part:'Data Interpretation and Logical Reasoning', html:`The table below presents the revenue (in million rupees) of four firms in three states. These firms, Honest Ltd., Aggressive Ltd., Truthful Ltd. and Profitable Ltd. are disguised in the table as A, B, C and D, in no particular order.
@@ -858,12 +835,7 @@ const STAGE1_QUESTIONS = [
    <tr><td>MP</td><td>72</td><td>63</td><td>72</td><td>65</td></tr></table>
    Further, it is known that: in the state of MP, Truthful Ltd. has the highest market share; and Aggressive Ltd.\u2019s aggregate revenue differs from Honest Ltd.\u2019s by Rs. 5 million.<br><br>
    Statement 1: Profitable Ltd. has the lowest share in MP market.<br>Statement 2: Honest Ltd.\u2019s total revenue is more than Profitable Ltd.<br>What can be said regarding the two statements?`, opts:['If Statement 1 is true then Statement 2 is necessarily true.','If Statement 1 is true then Statement 2 is necessarily false.','Both Statement 1 and Statement 2 are true.','Neither Statement 1 nor Statement 2 is true.'], ans:1},
- {id:'S1Q8', num:8, part:'Verbal Analysis', html:`In the following question, there are five sentences or parts of sentences that form a paragraph. Identify the sentence(s) or part(s) of sentence(s) that is/are correct in terms of grammar and usage. Then, choose the most appropriate option.<br>
-   A. So once an economy is actually in a recession,<br>
-   B. the authorities can, in principle, move the economy<br>
-   C. out of slump \u2013 assuming hypothetically<br>
-   D. that they know how to \u2013 by a temporary stimuli.<br>
-   E. In the longer term, however, such polices have no affect on the overall behaviour of the economy.`, opts:['A, B & E','B, C & E','C & D','B only'], ans:3},
+ {id:'S1Q8', num:8, part:'Verbal Analysis', html:`The word “Near” is used in four different ways, numbered 1 to 4. Choose the option in which the usage of the word is incorrect or inappropriate.`, opts:['I got there just after you left – a near miss!','She and her near friend left early.','The war led to a near doubling of oil prices.','They came near to tears seeing the plight of the victims.'], ans:1},
  {id:'S1Q9', num:9, part:'Verbal Analysis', html:`Choose the correct word for each pair:<br>
    1. The further/farther he pushed himself, the more disillusioned he grew.<br>
    2. For the crowds it was more of a historical/historic event; for their leader, it was just another day.<br>
@@ -1023,47 +995,113 @@ addSection(sidx, `
     </div>
   </div>
   <div class="card">
-    <div class="qtext">2. Approximately how many competitive examinations with penalty scoring have you taken in the past two years?</div>
+    <div class="qtext">2. Approximately how many competitive examinations with penalty scoring have you taken in the past five years?</div>
     <input type="number" id="examCount" min="0">
   </div>
   <div class="card">
     <div class="qtext">3. Are you currently preparing for any of the following examinations? (Tick all that apply)</div>
     <div class="opts">
-      ${['CAT (Common Admission Test)','JEE (Joint Entrance Examination)','CLAT (Common Law Admission Test)','GMAT or GRE','UPSC or Civil Services'].map(x=>`<label><input type="checkbox" name="examprep" value="${x}"><span>${x}</span></label>`).join('')}
-      <label><input type="checkbox" id="examOtherCk"><span>Other:</span> <input type="text" id="examOtherText" style="width:60%;display:inline-block;margin-left:6px;"></label>
+      ${['CAT (Common Admission Test)','JEE (Joint Entrance Examination)','CLAT (Common Law Admission Test)','GMAT or GRE','UPSC or Civil Services'].map(x=>`<label><input type="checkbox" name="examprep" value="${x}" onchange="examPrepChanged(this)"><span>${x}</span></label>`).join('')}
+      <label><input type="checkbox" id="examOtherCk" onchange="examPrepChanged(this)"><span>Other:</span> <input type="text" id="examOtherText" style="width:60%;display:inline-block;margin-left:6px;"></label>
+      <label><input type="checkbox" name="examprep" value="None" id="examNoneCk" onchange="examPrepChanged(this)"><span>None</span></label>
     </div>
   </div>
   <div class="card">
-    <div class="qtext">4. Please answer the following four questions. Take your time and work carefully. These are not trick questions.</div>
-    <div class="qtext">4a. Imagine we are throwing a five-sided die 50 times. On average, out of 50 throws, how many times would this five-sided die show an odd number (1, 3, or 5)? <input type="number" id="bnt_a" style="width:100px;display:inline-block;"> times out of 50</div>
-    <div class="qtext">4b. Out of 1000 people in a small town, 500 are members of a choir. Out of these 500 members, 100 are men. Out of the 500 inhabitants who are not in the choir, 300 are men. What is the probability that a randomly drawn man is a member of the choir? <input type="text" id="bnt_b" style="width:180px;display:inline-block;" placeholder="fraction or percentage"></div>
-    <div class="qtext">4c. Imagine we are throwing a loaded die (6 sides). The probability that the die shows a 6 is twice as high as the probability of each of the other numbers. On average, out of 70 throws, how many times would the die show the number 6? <input type="number" id="bnt_c" style="width:100px;display:inline-block;"> times out of 70</div>
-    <div class="qtext">4d. In a forest 20% of mushrooms are red, 50% brown and 30% white. A red mushroom is poisonous with a probability of 20%. A mushroom that is not red is poisonous with a probability of 5%. What is the probability that a poisonous mushroom in the forest is red? <input type="text" id="bnt_d" style="width:180px;display:inline-block;" placeholder="percentage"></div>
-  </div>
-  <div class="card">
-    <div class="qtext">5. Which category of roles (typically sought by company recruiters) do you believe you are best suited for?</div>
+    <div class="qtext">4. Which category of roles (typically sought by company recruiters) do you believe you are best suited for?</div>
     <div class="opts">
-      <label><input type="radio" name="rolecat" value="Initiative-driven"><span><b>Initiative-driven</b> (A role requiring initiative and commitment under uncertainty). An example of such a role: A strategy consultant who recommends a bold market entry plan to a client, knowing not all assumptions are fully validated.</span></label>
-      <label><input type="radio" name="rolecat" value="Precision-driven"><span><b>Precision-driven</b> (A role requiring precision and error avoidance). An example of such a role: A tax manager who ensures every rupee of GST filing is accurate, because a wrong submission triggers penalties and scrutiny.</span></label>
+      <label><input type="radio" name="rolecat" value="Initiative-driven"><span><b>Initiative-driven</b> (A role requiring initiative and commitment under uncertainty). Examples of such roles:
+        <br>&bull; A strategy consultant who recommends a bold market entry plan to a client, knowing not all assumptions are fully validated.
+        <br>&bull; A product manager who launches a new feature on a tight deadline, before all customer research is complete.
+        <br>&bull; A business development manager who commits to an aggressive sales target in a new, untested market.</span></label>
+      <label><input type="radio" name="rolecat" value="Precision-driven"><span><b>Precision-driven</b> (A role requiring precision and error avoidance). Examples of such roles:
+        <br>&bull; An investment banking analyst who builds the valuation model for a deal, where a single spreadsheet error can mislead the client.
+        <br>&bull; A credit risk manager at a bank who checks every loan proposal against lending norms, because one wrong approval can cause large losses.
+        <br>&bull; A supply chain planner who keeps inventory and delivery schedules exactly right, because an error leads to stock-outs and penalty charges.</span></label>
     </div>
   </div>
-  <div class="navrow"><button onclick="finishBackground()">Continue to Section 2</button></div>
+  <div class="flag" id="bgFlag" style="display:none;"></div>
+  <div class="navrow"><button onclick="finishBackground()">Continue</button></div>
 `);
 sidx++;
+// Q3: "None" cannot be combined with any exam; ticking an exam (or Other) clears "None".
+window.examPrepChanged = function(el){
+  const none = document.getElementById('examNoneCk');
+  if(el === none && none.checked){
+    document.querySelectorAll('input[name=examprep]').forEach(x=>{ if(x!==none) x.checked=false; });
+    document.getElementById('examOtherCk').checked = false;
+  } else if(el !== none && el.checked){ none.checked = false; }
+};
 window.finishBackground = function(){
+  const val = sel => (document.querySelector(sel)||{}).value || null;
+  const missing = [];
+  if(!val('input[name=familiarity]:checked')) missing.push('1');
+  const ec = document.getElementById('examCount').value.trim();
+  if(ec==='' || !Number.isInteger(Number(ec)) || Number(ec)<0) missing.push('2');
+  const anyPrep = document.querySelectorAll('input[name=examprep]:checked').length>0 || document.getElementById('examOtherCk').checked;
+  const otherBlank = document.getElementById('examOtherCk').checked && !document.getElementById('examOtherText').value.trim();
+  if(!anyPrep || otherBlank) missing.push('3');
+  if(!val('input[name=rolecat]:checked')) missing.push('4');
+  if(missing.length){
+    const f = document.getElementById('bgFlag');
+    f.textContent = 'Please answer every question before continuing. Still to answer: ' + missing.join(', ') + (otherBlank ? ' (please write the name of the other examination).' : '.');
+    f.style.display = 'block'; return;
+  }
   answers.background = {
     familiarity: (document.querySelector('input[name=familiarity]:checked')||{}).value || null,
     examCount: document.getElementById('examCount').value,
     examPrep: Array.from(document.querySelectorAll('input[name=examprep]:checked')).map(x=>x.value)
                 .concat(document.getElementById('examOtherCk').checked ? ['Other: '+document.getElementById('examOtherText').value] : []),
-    berlin: { a:document.getElementById('bnt_a').value, b:document.getElementById('bnt_b').value, c:document.getElementById('bnt_c').value, d:document.getElementById('bnt_d').value },
     roleCategory: (document.querySelector('input[name=rolecat]:checked')||{}).value || null
   };
+  goTo(SEC_BNT);
+};
+
+
+// ---------- SECTION 1 (cont.): BERLIN NUMERACY TEST (own screen, one question per page, calculator available) ----------
+const BNT_QUESTIONS = [
+  {id:'BNT1', key:'a', part:'Numeracy', html:`Imagine we are throwing a five-sided die 50 times. On average, out of 50 throws, how many times would this five-sided die show an odd number (1, 3, or 5)?`, opts:['20 times','25 times','30 times','35 times'], ans:2},
+  {id:'BNT2', key:'b', part:'Numeracy', html:`Out of 1000 people in a small town, 500 are members of a choir. Out of these 500 members, 100 are men. Out of the 500 inhabitants who are not in the choir, 300 are men. What is the probability that a randomly drawn man is a member of the choir?`, opts:['20%','25%','40%','50%'], ans:1},
+  {id:'BNT3', key:'c', part:'Numeracy', html:`Imagine we are throwing a loaded die (6 sides). The probability that the die shows a 6 is twice as high as the probability of each of the other numbers. On average, out of 70 throws, how many times would the die show the number 6?`, opts:['10 times','12 times','20 times','30 times'], ans:2},
+  {id:'BNT4', key:'d', part:'Numeracy', html:`In a forest 20% of mushrooms are red, 50% brown and 30% white. A red mushroom is poisonous with a probability of 20%. A mushroom that is not red is poisonous with a probability of 5%. What is the probability that a poisonous mushroom in the forest is red?`, opts:['4%','20%','50%','80%'], ans:2}
+];
+const SEC_BNT = sidx;
+addSection(sidx, `
+  <h1 class="sec-title">Section 1 &middot; Numeracy Questions</h1>
+  ${renderPagedMCQ('bnt', BNT_QUESTIONS.map((q,i)=>Object.assign({}, q, {num:i+1})), {allowSkip:false, noNav:true}, 'finishBNT', 'Continue to Section 2', `
+  <div class="instructions">Please answer the following four questions. Each question appears on its own page. You may use the on-screen calculator.</div>`)}
+  <div class="flag" id="bntFlag" style="display:none;"></div>
+`);
+sidx++;
+window.finishBNT = function(){
+  const missing = BNT_QUESTIONS.map((q,i)=>({q,i})).filter(({q})=>{
+    const v = document.querySelector(`.card[data-qid="${q.id}"]`).dataset.answered;
+    return v===undefined || v==='';
+  });
+  const flag = document.getElementById('bntFlag');
+  if(missing.length){
+    showStagePage('bnt', missing[0].i);
+    flag.textContent = 'Please answer every question before continuing. Still to answer: question ' + missing.map(m=>m.i+1).join(', ') + '.';
+    flag.style.display = 'block'; return;
+  }
+  flag.style.display = 'none';
+  const berlin = {};
+  BNT_QUESTIONS.forEach(q=>{
+    const idx = Number(document.querySelector(`.card[data-qid="${q.id}"]`).dataset.answered);
+    berlin[q.key] = q.opts[idx];
+    berlin[q.key+'_correct'] = (idx === q.ans);
+  });
+  berlin.score = BNT_QUESTIONS.filter(q=>berlin[q.key+'_correct']).length;
+  answers.background = Object.assign({}, answers.background, { berlin: berlin });
   buildMainFlowAndGo();
 };
 
+let startStage1Fn = null;   // set once the main flow exists; starts Stage 1 and its timer
 function buildMainFlowAndGo(jumpToIndex, resumeDraft){
-if(mainFlowBuilt){ if(jumpToIndex !== undefined && jumpToIndex !== null){ goTo(jumpToIndex); } return; }
+if(mainFlowBuilt){
+  if(jumpToIndex !== undefined && jumpToIndex !== null){ goTo(jumpToIndex); }
+  else if(startStage1Fn){ startStage1Fn(); }   // e.g. resumed on the numeracy screen, then continued
+  return;
+}
 mainFlowBuilt = true;
 
 // ---------- SECTION 2: STAGE 1 ABILITY ASSESSMENT ----------
@@ -1071,8 +1109,8 @@ addSection(sidx, `
   <h1 class="sec-title">Section 2 &middot; Stage 1 Assessment</h1>
   ${renderPagedMCQ('stage1', orderedQuestions(STAGE1_QUESTIONS, R.orderStage1), {allowSkip:false}, 'finishStage1', 'Submit Section 2', `
   <div class="instructions">
-    This section contains 10 multiple-choice questions spanning three areas: Quantitative Reasoning, Data Interpretation and Logical Reasoning, and Verbal Ability. For each question, select the single best answer by choosing any one of the four options A, B, C, or D.
-    <br><b>Payment rule:</b> You earn Rs. 15 for each correct answer. Incorrect answers and skipped questions earn Rs. 0. Since there is no penalty for incorrect answers, you should attempt every question.
+    This section contains 10 multiple-choice questions. For each question, select the single best answer by choosing any one of the four options A, B, C, or D.
+    <br><b>Payment rule:</b> You earn Rs. 10 for each correct answer. Incorrect answers and skipped questions earn Rs. 0.
     <br><b>Time allowed: 18 minutes.</b> Each question appears on its own page; use the Next button to move through them.
   </div>`)}
 `);
@@ -1088,7 +1126,7 @@ window.finishStage1 = function(auto){
 // ---------- SECTION 2 (cont.): BELIEFS ABOUT STAGE 1 PERFORMANCE ----------
 addSection(sidx, `
   <h1 class="sec-title">Section 2 &middot; Your Performance</h1>
-  <div class="instructions">Please answer the following two questions about your Section 2 performance. Answer based on your honest personal belief.</div>
+  <div class="instructions">Please answer the following two questions about your Section 2 performance (i.e., the 10 questions test just attempted).</div>
   <div class="card">
     <div class="qtext">Question 1: Out of the 10 questions in Section 2, how many do you think you answered correctly?</div>
     I think I answered approximately <input type="number" id="confAbs" style="width:100px;display:inline-block;" min="0" max="10"> questions correctly out of 10.
@@ -1151,11 +1189,15 @@ window.taskAChoice = function(rowIndex, idx){
 };
 addSection(sidx, `
   <h1 class="sec-title">Section 3 &middot; Decision Tasks</h1>
-  <div class="instructions">
-    This section contains two decision tasks. At the end of the session, one decision from Task A and one decision from Task B will each be randomly selected and paid based on your choice. Please treat every decision as if it is the one that will count for payment.
-  </div>
   <h2 class="part-title">Task A</h2>
-  <div class="instructions">Below are 10 pairs of options. For each row, choose either Option A or Option B. One row will be randomly selected for payment.</div>
+  <div class="instructions">Below are 10 rows. Each row offers a choice between two lotteries:
+    <ul style="margin:6px 0 6px 18px;padding:0;">
+      <li>Option A pays either Rs. 30 or Rs. 25.</li>
+      <li>Option B pays either Rs. 55 or Rs. 1.</li>
+    </ul>
+    The chance of winning the higher amount in each option changes from row to row, as shown in the table. In each row, choose either Option A or Option B.
+    <br><br>After you make all 10 choices, the computer will randomly pick one row for payment. It will then play the lottery you chose in that row, using the chances shown, to decide whether you win the higher or the lower amount. The outcome will be revealed at the end.
+    <br><br>Since any row could be the one that pays, choose carefully in every row.</div>
   <table class="choicetable">
     <thead><tr><th style="width:56px;">Row</th><th>Option A </th><th>Option B </th></tr></thead>
     <tbody>
@@ -1214,7 +1256,14 @@ window.taskBChoice = function(rowIndex, idx){
 addSection(sidx, `
   <h1 class="sec-title">Task B</h1>
   <div class="instructions">
-    Below are 6 lotteries. Each offers a 50% chance of winning Rs. 60 and a 50% chance of losing a varying amount. For each row, decide whether you Accept or Reject the lottery. One row will be randomly selected for payment. If you accepted and won, Rs. 60 will be added to your earnings. If you accepted and lost, the loss amount will be subtracted from your earnings. If you reject all the 6 lotteries, you will not lose any amount and will gain Rs. 0. You will always receive at least your participation fee, i.e. Rs. 100.
+    Below are 6 lotteries. In each one, you have a 50% chance of winning Rs. 60 and a 50% chance of losing an amount that differs from row to row, as shown in the table. For each row, choose either Accept or Reject.
+    <br><br>After you make all 6 choices, the computer will randomly pick one row for payment.
+    <ul style="margin:6px 0 6px 18px;padding:0;">
+      <li>If you accepted the lottery in that row, the computer will play it. If you win, Rs. 60 is added to your earnings. If you lose, the amount shown for that row is subtracted from your earnings.</li>
+      <li>If you rejected the lottery in that row, nothing is added or subtracted, and your earnings stay the same.</li>
+    </ul>
+    Whatever happens, you will always receive at least your participation fee of Rs. 125.
+    <br><br>Since any row could be the one that pays, choose carefully in every row.
   </div>
   <table class="choicetable">
     <thead><tr><th style="width:70px;">Row</th><th>Lottery</th><th style="width:100px;">Accept</th><th style="width:100px;">Reject</th></tr></thead>
@@ -1293,85 +1342,96 @@ addSection(sidx, `
     <br><br>You must either choose any one of the four options A, B, C, D or tick the Skip box for every question. Skipping a question will not reward or cost you any score.
     <br><b>Time allowed: 18 minutes.</b>
   </div>
-  <div class="navrow"><button onclick="goTo(${sidx+1})">Continue to Grading Rule Check</button></div>
+  <div class="navrow"><button onclick="goTo(${sidx+1})">Continue to Attention Check</button></div>
 `);
 sidx++;
 
-// ---------- COMPREHENSION CHECK ----------
-// Each list contains the values of all three rules, so the options do not reveal the participant's rule.
+// ---------- ATTENTION CHECK (formerly "Grading Rule Check") ----------
+// Q1-Q3 option lists contain the values of all three rules, so they do not reveal the participant's rule.
+// Q4: total score of 10 / 40 / 100 points under Rule 1 / 2 / 3 is worth Rs. 200 under every rule.
 const CC_FIRST_Q1 = [1, 4, 10, 2.5, 0.25, 0];
 const CC_FIRST_Q2 = [-0.25, -1, -2.5, -4, -10, 0];
+const CC_FIRST_Q3 = [0.25, -1, 2.5, 4, 10, 0];
 const CC_RETRY_Q1 = [10, 0.25, 4, 2.5, 1, 0, 1.5];
 const CC_RETRY_Q2 = [2.5, 1, 0.25, 4, 0, 10, 1.25];
+const CC_RETRY_Q3 = [-0.25, -1, -2.5, -4, -10, 0];
+const CC_Q4_OPTS  = [100, 200, 300, 400];
+const CC_Q4_POINTS = {1:10, 2:40, 3:100}[R.condition];
 let ccAttempt = 1;
 addSection(sidx, `
-  <h1 class="sec-title">Grading Rule Check</h1>
-  <div class="instructions">For each of the following 2 questions, please choose any 1 option.</div>
-  <div class="card" data-qid="cc_q1">
-    <div class="qtext" id="cc_q1_text">Question 1<br>If you answer a question correctly, how many points will you receive?</div>
-    <div class="opts" id="cc_q1_opts"></div>
-  </div>
-  <div class="card" data-qid="cc_q2">
-    <div class="qtext" id="cc_q2_text">Question 2<br>If you answer a question incorrectly, how many points will you receive?</div>
-    <div class="opts" id="cc_q2_opts"></div>
-  </div>
+  <h1 class="sec-title">Attention Check</h1>
+  <div class="instructions">For each of the following 4 questions, please choose any 1 option.</div>
+  <div class="card" data-qid="cc_q1"><div class="qtext" id="cc_q1_text"></div><div class="opts" id="cc_q1_opts"></div></div>
+  <div class="card" data-qid="cc_q2"><div class="qtext" id="cc_q2_text"></div><div class="opts" id="cc_q2_opts"></div></div>
+  <div class="card" data-qid="cc_q3"><div class="qtext" id="cc_q3_text"></div><div class="opts" id="cc_q3_opts"></div></div>
+  <div class="card" data-qid="cc_q4"><div class="qtext" id="cc_q4_text"></div><div class="opts" id="cc_q4_opts"></div></div>
   <div id="ccFeedback" class="instructions warn" style="display:none;"></div>
-  <div class="flag" id="ccFlag" style="display:none;">Please answer both questions.</div>
+  <div class="flag" id="ccFlag" style="display:none;">Please answer all four questions.</div>
   <div class="navrow"><button id="ccSubmitBtn" onclick="submitComprehensionCheck()">Submit</button></div>
 `);
 const SEC_COMPCHECK = sidx; sidx++;
 function fmtPts(v){ return (v>0?'+':'') + v; }
+function ccLists(){
+  return ccAttempt===1
+    ? { q1: CC_FIRST_Q1, q2: CC_FIRST_Q2, q3: CC_FIRST_Q3, q4: CC_Q4_OPTS }
+    : { q1: CC_RETRY_Q1, q2: CC_RETRY_Q2, q3: CC_RETRY_Q3, q4: CC_Q4_OPTS };
+}
 function renderCCOptions(){
-  const q1Opts = ccAttempt===1 ? CC_FIRST_Q1 : CC_RETRY_Q1;
-  const q2Opts = ccAttempt===1 ? CC_FIRST_Q2 : CC_RETRY_Q2;
+  const L = ccLists();
   document.getElementById('cc_q1_text').innerHTML = 'Question 1<br>If you answer a question correctly, how many points will you receive?';
   document.getElementById('cc_q2_text').innerHTML = ccAttempt===1
     ? 'Question 2<br>If you answer a question incorrectly, how many points will you receive?'
     : 'Question 2<br>Under your scoring rule, how many points do you lose for an incorrect answer?';
-  document.getElementById('cc_q1_opts').innerHTML = q1Opts.map((v,i)=>`<label><input type="radio" name="cc_q1" onchange="selectOpt('cc_q1',${i})"><span>${fmtPts(v)}</span></label>`).join('');
-  document.getElementById('cc_q2_opts').innerHTML = q2Opts.map((v,i)=>`<label><input type="radio" name="cc_q2" onchange="selectOpt('cc_q2',${i})"><span>${ccAttempt===1 ? fmtPts(v) : v}</span></label>`).join('');
-  document.querySelector('[data-qid="cc_q1"]').dataset.answered = '';
-  document.querySelector('[data-qid="cc_q2"]').dataset.answered = '';
+  document.getElementById('cc_q3_text').innerHTML = 'Question 3<br>If you skip a question, how many points will you receive?';
+  document.getElementById('cc_q4_text').innerHTML = `Question 4<br>If your total score is ${CC_Q4_POINTS} points, how much money will you make from this section?`;
+  const fmt = {
+    q1: v=>fmtPts(v),
+    q2: v=>ccAttempt===1 ? fmtPts(v) : String(v),
+    q3: v=>(v<0 ? '−'+Math.abs(v) : String(v)),
+    q4: v=>'Rs. '+v
+  };
+  ['q1','q2','q3','q4'].forEach(q=>{
+    document.getElementById(`cc_${q}_opts`).innerHTML = L[q].map((v,i)=>`<label><input type="radio" name="cc_${q}" onchange="selectOpt('cc_${q}',${i})"><span>${fmt[q](v)}</span></label>`).join('');
+    document.querySelector(`[data-qid="cc_${q}"]`).dataset.answered = '';
+  });
   document.getElementById('ccFlag').style.display = 'none';
 }
 renderCCOptions(); // populate the first-attempt options as soon as this section is built
 
 window.submitComprehensionCheck = function(){
-  const q1card = document.querySelector('[data-qid="cc_q1"]');
-  const q2card = document.querySelector('[data-qid="cc_q2"]');
-  const q1val = q1card.dataset.answered;
-  const q2val = q2card.dataset.answered;
-  if(q1val===undefined||q1val===''||q2val===undefined||q2val===''){
-    document.getElementById('ccFlag').style.display = 'block';
-    return;
+  const L = ccLists();
+  const picked = {};
+  for(const q of ['q1','q2','q3','q4']){
+    const v = document.querySelector(`[data-qid="cc_${q}"]`).dataset.answered;
+    if(v===undefined || v===''){ document.getElementById('ccFlag').style.display = 'block'; return; }
+    picked[q] = L[q][Number(v)];
   }
-  const q1Opts = ccAttempt===1 ? CC_FIRST_Q1 : CC_RETRY_Q1;
-  const q2Opts = ccAttempt===1 ? CC_FIRST_Q2 : CC_RETRY_Q2;
-  const chosenQ1 = q1Opts[Number(q1val)];
-  const chosenQ2 = q2Opts[Number(q2val)];
-  const correctVal = conditionText[R.condition].correct;
-  const wrongVal = conditionText[R.condition].wrong;
-  const expectedQ2 = ccAttempt===1 ? wrongVal : Math.abs(wrongVal);
-  const isCorrect = (chosenQ1===correctVal) && (chosenQ2===expectedQ2);
-  answers.comprehensionCheck['attempt'+ccAttempt] = { q1: chosenQ1, q2: chosenQ2, correct: isCorrect };
+  const correctVal = RULE.correct, wrongVal = RULE.wrong;
+  const ok = {
+    q1: picked.q1 === correctVal,
+    q2: picked.q2 === (ccAttempt===1 ? wrongVal : Math.abs(wrongVal)),
+    q3: picked.q3 === 0,
+    q4: picked.q4 === CC_Q4_POINTS * RULE.rsPerPoint
+  };
+  const isCorrect = ok.q1 && ok.q2 && ok.q3 && ok.q4;
+  answers.comprehensionCheck['attempt'+ccAttempt] = { q1: picked.q1, q2: picked.q2, q3: picked.q3, q4: picked.q4, q4Points: CC_Q4_POINTS, correctByQuestion: ok, correct: isCorrect };
+  const fb = document.getElementById('ccFeedback');
+  const proceed = ()=>{ document.getElementById('ccSubmitBtn').textContent = 'Continue to Assessment';
+                        document.getElementById('ccSubmitBtn').onclick = function(){ goTo(SEC_COMPCHECK+1); beginStage2(); }; };
   if(isCorrect){
-    document.getElementById('ccFeedback').className = 'instructions';
-    document.getElementById('ccFeedback').style.display = 'block';
-    document.getElementById('ccFeedback').innerHTML = 'Correct! Now proceed to the main assessment.';
-    document.getElementById('ccSubmitBtn').textContent = 'Continue to Assessment';
-    document.getElementById('ccSubmitBtn').onclick = function(){ goTo(SEC_COMPCHECK+1); beginStage2(); };
-    return;
+    fb.className = 'instructions'; fb.style.display = 'block';
+    fb.innerHTML = 'Correct! Now proceed to the main assessment.';
+    proceed(); return;
   }
   if(ccAttempt===1){
     ccAttempt = 2;
-    document.getElementById('ccFeedback').style.display = 'block';
-    document.getElementById('ccFeedback').innerHTML = `That wasn\u2019t quite right. Under your scoring rule, a correct answer earns <b>${fmtPts(correctVal)}</b> point(s), and an incorrect answer costs <b>${Math.abs(wrongVal)}</b> point(s). Please try again.`;
+    fb.style.display = 'block';
+    fb.innerHTML = `That wasn’t quite right. Under your scoring rule, a correct answer earns <b>${fmtPts(correctVal)}</b> point(s), and an incorrect answer costs <b>${Math.abs(wrongVal)}</b> point(s), and a skip costs you <b>0</b> points. Each point earns you <b>Rs. ${RULE.rsPerPoint}</b>. Please try again.`;
     renderCCOptions();
   } else {
-    document.getElementById('ccFeedback').style.display = 'block';
-    document.getElementById('ccFeedback').innerHTML = `Under your scoring rule, a correct answer earns <b>${fmtPts(correctVal)}</b> point(s), and an incorrect answer costs <b>${Math.abs(wrongVal)}</b> point(s).`;
-    document.getElementById('ccSubmitBtn').textContent = 'Continue to Assessment';
-    document.getElementById('ccSubmitBtn').onclick = function(){ goTo(SEC_COMPCHECK+1); beginStage2(); };
+    fb.style.display = 'block';
+    fb.innerHTML = `Under your scoring rule, a correct answer earns <b>${fmtPts(correctVal)}</b> point(s), and an incorrect answer costs <b>${Math.abs(wrongVal)}</b> point(s).`;
+    proceed();
   }
 };
 
@@ -1379,8 +1439,8 @@ window.submitComprehensionCheck = function(){
 addSection(sidx, `
   <h1 class="sec-title">Section 4 &middot; Stage 2 Assessment</h1>
   <div class="instructions">
-    Each of the 10 questions appears on its own page. For each question, choose any one of the 4 options A, B, C, D OR tick the Skip box. Do not leave any question entirely blank.
-    <br><b>Time allowed: 18 minutes.</b> Each point is worth Rs. ${RULE.rsPerPoint}.
+    Each of the 10 questions appears on a separate page. For each question, either choose one of the four options (A, B, C or D) or tick the Skip box. You can go back to any question at any time and change your answer. If you leave a question without choosing an option or ticking Skip, it will be counted as a Skip at the end.
+    <br><b>Time allowed: 18 minutes.</b>
   </div>
   ${renderPagedMCQ('stage2', orderedQuestions(STAGE2_QUESTIONS, R.orderStage2), {allowSkip:true}, 'finishStage2', 'Submit Section 4', '', RULE_BANNER)}
 `);
@@ -1391,27 +1451,6 @@ window.finishStage2 = function(auto){
   const {result} = collectMCQ(STAGE2_QUESTIONS);
   answers.stage2 = { responses: result, autoSubmitted: !!auto };
   goTo(SEC_STAGE2+1);
-};
-
-// ---------- SECTION 4 (cont.): BELIEF ABOUT STAGE 2 PERFORMANCE ----------
-addSection(sidx, `
-  <h1 class="sec-title">Section 4 &middot; Your Performance</h1>
-  <div class="instructions">Please answer the following question about your Section 4 performance. Answer based on your honest personal belief.</div>
-  <div class="card">
-    <div class="qtext">Out of the 10 questions in Section 4, how many do you think you answered correctly?</div>
-    I think I answered approximately <input type="number" id="confAbs2" style="width:100px;display:inline-block;" min="0" max="10"> questions correctly out of 10.
-    <div class="footnote">You earn Rs. 20 if your estimate is within one of the actual number of questions you answered correctly in Section 4 (for example, if you actually got 6 right, an estimate of 5, 6 or 7 earns Rs. 20).</div>
-  </div>
-  <div class="flag" id="confFlag2" style="display:none;">Please enter a whole number from 0 to 10.</div>
-  <div class="navrow"><button onclick="finishConfidenceStage2()">Continue</button></div>
-`);
-const SEC_CONFIDENCE2 = sidx; sidx++;
-window.finishConfidenceStage2 = function(){
-  const raw = document.getElementById('confAbs2').value.trim();
-  const v = Number(raw);
-  if(raw===''||!Number.isInteger(v)||v<0||v>10){ document.getElementById('confFlag2').style.display='block'; return; }
-  answers.confidenceStage2 = { absoluteEstimate: v };
-  goTo(SEC_CONFIDENCE2+1);
 };
 
 // ---------- SECTION 5: STAGE 3 (announced only after Stage 2 has ended) ----------
@@ -1433,7 +1472,7 @@ addSection(sidx, `
       <li>Otherwise, you win <b>Rs. ${STAGE3_WIN_AMOUNT}</b> if your own answer is correct.</li>
     </ul>
     <br>Because of this rule, you earn the most on average by stating your honest belief about how likely your answer is to be correct. Stating a higher number than you believe makes you rely on your own answer when the robot would have been the better bet; stating a lower number does the reverse.
-    <br><br><b>Time allowed: 8 minutes.</b> All the confidence questions in this section must be completed within 8 minutes. The timer starts when you click &ldquo;Begin Stage 3&rdquo;. When time runs out, this section is submitted automatically, and any question left without an answer or a confidence earns Rs. 0.
+    <br><br><b>Time allowed: 5 minutes.</b> All the confidence questions in this section must be completed within 5 minutes. The timer starts when you click &ldquo;Begin Stage 3&rdquo;. When time runs out, this section is submitted automatically, and any question left without an answer or a confidence earns Rs. 0.
   </div>
   <div class="navrow"><button onclick="enterStage3()">Begin Stage 3</button></div>
 `);
@@ -1507,7 +1546,7 @@ window.stage3Next = function(i){
   flag.style.display = 'none';
   showStagePage('stage3', i+1);
 };
-const STAGE3_TIME_LIMIT_SEC = 8*60;
+const STAGE3_TIME_LIMIT_SEC = 5*60;
 function beginStage3(sec){ startTimer(sec!=null ? sec : STAGE3_TIME_LIMIT_SEC, null, ()=>finishStage3(true)); }
 window.enterStage3 = function(){
   renderStage3();
@@ -1588,14 +1627,14 @@ window.finishStage3 = function(auto){
 // ---------- SECTION 6: FINAL TASK (gambles scored under the participant's own rule) ----------
 // Win chances 10,15,...,55 percent, then a 90 percent attention check. Declining scores 0.
 // One decision is paid; its points are added to the Stage 2 (Section 4) points before conversion to Rs.
-const GAMBLE_PROBS = [10,15,20,25,30,35,40,45,50,55,90];
+const GAMBLE_PROBS = [90,55,50,45,40,35,30,25,20,15,10];   // row 1 (90%) is the attention check
 addSection(sidx, `
   <h1 class="sec-title">Section 6</h1>
   <div class="instructions">
     Below are ${GAMBLE_PROBS.length} options. Each option is scored in points under the scoring rule from Section 4:
     if you accept and win, you gain <b>${ptsStr(RULE.correct)}</b> ${ptWord(RULE.correct)}; if you accept and lose, you lose <b>${Math.abs(RULE.wrong)}</b> ${ptWord(RULE.wrong)}. Only the chance of winning differs between rows.
     If you decline an option, it scores <b>0</b> points.
-    <br><br>For each row, choose Accept or Decline. One row will be randomly selected and played out. The points from that row will be <b>added to your Section 4 points</b>, and the total will be converted to money at <b>Rs. ${RULE.rsPerPoint}</b> per point.
+    <br><br>For each row, choose Accept or Decline. One row will be randomly selected and played out. The points from that row will be <b>added to your Section 4 points</b>.
     Please treat every row as if it is the one that will count.
   </div>
   <table class="choicetable">
@@ -1628,12 +1667,14 @@ window.finishGambleTask = function(){
     resp['row'+i] = val==='0' ? 'Accept' : (val==='1' ? 'Decline' : null);
   });
   if(!complete){ document.getElementById('gambleFlag').style.display='block'; return; }
+  // Rows with 10-55% win chance (the 90% attention-check row is excluded), in on-screen order.
+  const mainRows = GAMBLE_PROBS.map((g,i)=>({g,i})).filter(r=>r.g!==90);
   // Lowest win chance (among 10-55%) at which the participant accepts; null if she never accepts.
-  let threshold = null;
-  for(let i=0;i<GAMBLE_PROBS.length-1;i++){ if(resp['row'+i]==='Accept'){ threshold = GAMBLE_PROBS[i]; break; } }
-  // Number of switches between Accept/Decline across the ten ordered rows (1 or 0 = consistent cutoff).
+  const accepted = mainRows.filter(r=>resp['row'+r.i]==='Accept').map(r=>r.g);
+  const threshold = accepted.length ? Math.min(...accepted) : null;
+  // Number of switches between Accept/Decline across those ten rows (1 or 0 = consistent cutoff).
   let switches = 0;
-  for(let i=1;i<GAMBLE_PROBS.length-1;i++){ if(resp['row'+i]!==resp['row'+(i-1)]) switches++; }
+  for(let k=1;k<mainRows.length;k++){ if(resp['row'+mainRows[k].i]!==resp['row'+mainRows[k-1].i]) switches++; }
   const row = Math.floor(Math.random()*GAMBLE_PROBS.length);
   const winPct = GAMBLE_PROBS[row];
   const decision = resp['row'+row];
@@ -1650,7 +1691,7 @@ window.finishGambleTask = function(){
     responses: resp,
     lowestAcceptedPct: threshold,
     switchesAcross10to55: switches,
-    attentionCheckAccepted: resp['row'+(GAMBLE_PROBS.length-1)] === 'Accept',
+    attentionCheckAccepted: resp['row'+GAMBLE_PROBS.indexOf(90)] === 'Accept',
     randomlySelectedRow: row,
     selectedWinPct: winPct,
     selectedDecision: decision,
@@ -1727,10 +1768,31 @@ addSection(sidx, `
     <div class="opts">${['Less than secondary school','Secondary school (Class 10 or 12)','Undergraduate degree','Postgraduate degree or higher'].map(x=>`<label><input type="radio" name="d_fathered" value="${x}"><span>${x}</span></label>`).join('')}</div>
   </div>
   <div class="card"><div class="qtext">9. Years of Work Experience (Internship does not count as work experience)</div><input type="number" id="d_workexp" min="0"></div>
+  <div class="flag" id="demoFlag" style="display:none;"></div>
   <div class="navrow"><button onclick="finishDemographics()">Finish &amp; See Summary</button></div>
 `);
 sidx++;
 window.finishDemographics = function(){
+  const v = sel => (document.querySelector(sel)||{}).value || null;
+  const txt = id => document.getElementById(id).value.trim();
+  const missing = [];
+  const age = Number(txt('d_age'));
+  if(txt('d_age')==='' || !Number.isInteger(age) || age<15 || age>90) missing.push('1');
+  if(!v('input[name=d_gender]:checked')) missing.push('2');
+  if(!txt('d_programme')) missing.push('3');
+  if(!v('input[name=d_year]:checked')) missing.push('4');
+  if(!txt('d_univ')) missing.push('5');
+  const pd = v('input[name=d_priordegree]:checked');
+  if(!pd || (pd==='Other' && !txt('d_priordegree_other'))) missing.push('6');
+  if(!v('input[name=d_mothered]:checked')) missing.push('7');
+  if(!v('input[name=d_fathered]:checked')) missing.push('8');
+  const we = Number(txt('d_workexp'));
+  if(txt('d_workexp')==='' || !Number.isFinite(we) || we<0) missing.push('9');
+  if(missing.length){
+    const f = document.getElementById('demoFlag');
+    f.textContent = 'Please answer every question before continuing. Still to answer: ' + missing.join(', ') + '.';
+    f.style.display = 'block'; return;
+  }
   answers.demographics = {
     age: document.getElementById('d_age').value,
     gender: (document.querySelector('input[name=d_gender]:checked')||{}).value || null,
@@ -1789,10 +1851,10 @@ function renderEarningsBreakdown(earnings){
 }
 
 function computeEarnings(){
-  const FIXED_FEE = 100;
+  const FIXED_FEE = 125;
   let stage1Correct = 0;
   Object.values(answers.stage1.responses || {}).forEach(r=>{ if(r && r.chosen === r.correct) stage1Correct++; });
-  const stage1Pay = stage1Correct * 15;
+  const stage1Pay = stage1Correct * 10;
 
   const breakdown = [];
   breakdown.push({
@@ -1802,7 +1864,7 @@ function computeEarnings(){
   });
   breakdown.push({
     section: 'Section 2 · Stage 1 Assessment',
-    calc: `${stage1Correct} correct answer(s) × Rs. 15 = Rs. ${stage1Pay}`,
+    calc: `${stage1Correct} correct answer(s) × Rs. 10 = Rs. ${stage1Pay}`,
     amount: stage1Pay
   });
 
@@ -1872,16 +1934,6 @@ function computeEarnings(){
     amount: stage2Pay
   });
 
-  // Section 4: estimate of own Stage 2 correct answers (Rs. 20 if within one)
-  const estimate2 = answers.confidenceStage2 ? Number(answers.confidenceStage2.absoluteEstimate) : NaN;
-  const estimate2Hit = Number.isFinite(estimate2) && Math.abs(estimate2 - s2Correct) <= 1;
-  const estimate2Pay = estimate2Hit ? 20 : 0;
-  breakdown.push({
-    section: 'Section 4 · Estimate of Your Score',
-    calc: `You estimated ${Number.isFinite(estimate2)?estimate2:'-'} correct; you actually answered ${s2Correct} correctly. ${estimate2Hit ? 'Your estimate was within one, so you earn Rs. 20.' : 'Your estimate was not within one, so you earn Rs. 0.'}`,
-    amount: estimate2Pay
-  });
-
   // Section 5: Stage 3
   const s3 = answers.stage3 || {};
   const s3NewPay = s3.newAnswerPayTotal || 0;
@@ -1897,14 +1949,13 @@ function computeEarnings(){
     amount: s3ConfPay
   });
 
-  const total = Math.round((FIXED_FEE + stage1Pay + estimatePay + taskAPay + taskBPay + stage2Pay + estimate2Pay + s3NewPay + s3ConfPay)*100)/100;
+  const total = Math.round((FIXED_FEE + stage1Pay + estimatePay + taskAPay + taskBPay + stage2Pay + s3NewPay + s3ConfPay)*100)/100;
 
   answers.earnings = {
     fixedFee: FIXED_FEE,
     stage1: { correctCount: stage1Correct, pay: stage1Pay },
     estimate: { estimate: estimate, stage1Correct: stage1Correct, pay: estimatePay },
     stage2: { condition: R.condition, correct: s2Correct, wrong: s2Wrong, blank: s2Blank, points: s2Points, gamblePoints: gamblePoints, totalPoints: s2TotalPoints, rsPerPoint: RULE.rsPerPoint, pay: stage2Pay },
-    estimateStage2: { estimate: estimate2, stage2Correct: s2Correct, pay: estimate2Pay },
     stage3: { newAnswerPay: s3NewPay, confidencePay: s3ConfPay },
     taskA: { pay: taskAPay },
     taskB: { pay: taskBPay },
@@ -1940,6 +1991,7 @@ if(jumpToIndex !== undefined && jumpToIndex !== null){
   goTo(SEC_STAGE1);
   beginStage1();
 }
+startStage1Fn = ()=>{ goTo(SEC_STAGE1); beginStage1(); };
 }
 
 /* =====================================================================
@@ -2040,7 +2092,8 @@ window.updateCalculatorVisibility = function (section) {
   const isStage2Assessment = /Stage 2 Assessment/i.test(titleText) &&
     !!section.querySelector('[data-qid]');
   const isStage3 = /Stage 3/i.test(titleText) && !!section.querySelector('[data-qid]');
-  const allowed = isStage1Assessment || isStage2Assessment || isStage3;
+  const isNumeracy = /Numeracy Questions/i.test(titleText) && !!section.querySelector('[data-qid]');
+  const allowed = isStage1Assessment || isStage2Assessment || isStage3 || isNumeracy;
 
   calculator.classList.remove('visible');
   calculatorExpression = '';
