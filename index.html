@@ -1017,8 +1017,7 @@ addSection(sidx, `
     <div class="opts">
       <label><input type="radio" name="rolecat" value="Initiative-driven"><span><b>Initiative-driven</b> (A role requiring initiative and commitment under uncertainty). Examples of such roles:
         <br>&bull; A strategy consultant who recommends a bold market entry plan to a client, knowing not all assumptions are fully validated.
-        <br>&bull; A product manager who launches a new feature on a tight deadline, before all customer research is complete.
-        <br>&bull; A business development manager who commits to an aggressive sales target in a new, untested market.</span></label>
+        <br>&bull; A product manager who launches a new feature on a tight deadline, before all customer research is complete.</span></label>
       <label><input type="radio" name="rolecat" value="Precision-driven"><span><b>Precision-driven</b> (A role requiring precision and error avoidance). Examples of such roles:
         <br>&bull; An investment banking analyst who builds the valuation model for a deal, where a single spreadsheet error can mislead the client.
         <br>&bull; A credit risk manager at a bank who checks every loan proposal against lending norms, because one wrong approval can cause large losses.</span></label>
@@ -1847,7 +1846,12 @@ function renderEarningsBreakdown(earnings){
   rows += `
     <div style="padding:14px 0 2px;border-top:2px solid var(--ink);display:flex;justify-content:space-between;align-items:baseline;">
       <div style="font-weight:700;font-size:15.5px;">Total</div>
-      <div style="font-family:var(--mono);font-weight:700;font-size:17px;">${fmtRs(earnings.total)}</div>
+      <div style="font-family:var(--mono);font-weight:700;font-size:17px;">${fmtRs(earnings.exactTotal != null ? earnings.exactTotal : earnings.total)}</div>
+    </div>
+    <div style="padding:10px 0 2px;display:flex;justify-content:space-between;align-items:baseline;">
+      <div><div style="font-weight:700;font-size:15.5px;">Final Earnings</div>
+        <div style="font-size:13px;color:#5a5f52;margin-top:3px;">Total rounded to the nearest Rs. 50.</div></div>
+      <div style="font-family:var(--mono);font-weight:700;font-size:17px;color:var(--accent);">${fmtRs(earnings.total)}</div>
     </div>`;
   if(earnings.note){
     rows += `<div class="footnote" style="margin-top:10px;">${earnings.note}</div>`;
@@ -1954,7 +1958,9 @@ function computeEarnings(){
     amount: s3ConfPay
   });
 
-  const total = Math.round((FIXED_FEE + stage1Pay + estimatePay + taskAPay + taskBPay + stage2Pay + s3NewPay + s3ConfPay)*100)/100;
+  const exactTotal = Math.round((FIXED_FEE + stage1Pay + estimatePay + taskAPay + taskBPay + stage2Pay + s3NewPay + s3ConfPay)*100)/100;
+  // Amount paid: the exact total rounded to the nearest multiple of Rs. 50 (halfway amounts round up, e.g. 525 -> 550).
+  const total = Math.round(exactTotal / 50) * 50;
 
   answers.earnings = {
     fixedFee: FIXED_FEE,
@@ -1965,6 +1971,7 @@ function computeEarnings(){
     taskA: { pay: taskAPay },
     taskB: { pay: taskBPay },
     breakdown: breakdown,
+    exactTotal: exactTotal,
     total: total
   };
   return answers.earnings;
